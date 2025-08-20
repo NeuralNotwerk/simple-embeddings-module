@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude .amazonq *
+recursive-exclude dev_docs *
+recursive-exclude planning *
+recursive-exclude test_indexes *
