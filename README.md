@@ -14,18 +14,6 @@
 
 ## 🚀 Quick Start
 
-### Super Simple (One-Liner!)
-
-```python
-# The simplest possible semantic search - just import and go!
-from simple_embeddings_module import SEMSimple
-
-sem = SEMSimple()
-sem.add_text("Machine learning is transforming software development.")
-results = sem.search("AI technology")
-print(results[0]['text'])  # Found it!
-```
-
 ### Installation
 
 ```bash
@@ -37,7 +25,19 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 
 # Option 2: Install from PyPI (when available)
-pip install simple-embeddings-module
+# Not available yet
+```
+
+### Super Simple Usage
+
+```python
+# The simplest possible semantic search - just import and go!
+from simple_embeddings_module import SEMSimple
+
+sem = SEMSimple()
+sem.add_text("Machine learning is transforming software development.")
+results = sem.search("AI technology")
+print(results[0]['text'])  # Found it!
 ```
 
 ### Basic Usage
@@ -289,7 +289,7 @@ To add a new embedding provider:
 
 ## 📄 License
 
-Apache License Version 2.0
+Apache 2.0
 
 ## Main External Depends
 
