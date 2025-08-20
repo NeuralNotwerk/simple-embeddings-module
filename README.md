@@ -73,7 +73,7 @@ SEM uses a plugin-based architecture with four main component types:
 │   transformers  │    │ • code (TODO)   │    │ • s3 (TODO)     │    │ • json (TODO)   │
 │ • openai        │    │ • csv (TODO)    │    │ • gcs (TODO)    │    │                 │
 │ • bedrock       │    │ • chunk_mux     │    │                 │    │                 │
-│ • ollama (TODO) │    │                 │    │                 │    │                 │
+│ • ollama        │    │                 │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -175,6 +175,18 @@ builder.set_embedding_provider("bedrock",
 - **Authentication**: IAM roles, profiles, or explicit credentials
 - **Enterprise**: AWS security, compliance, and billing
 - **Cost**: Pay-per-use through AWS billing
+
+#### Ollama Local Models (Local)
+```python
+builder.set_embedding_provider("ollama", 
+    model="snowflake-arctic-embed2",
+    auto_start_server=True
+)
+```
+- **Models**: Any Ollama-compatible embedding model
+- **Features**: Automatic server management, model downloading
+- **Privacy**: Fully local processing, no data leaves your machine
+- **Cost**: Free (after initial model download)
 
 ### Custom Configuration
 

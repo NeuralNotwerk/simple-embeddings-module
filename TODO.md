@@ -21,11 +21,11 @@ The core functionality is working end-to-end with:
   - [ ] Rate limiting and retry logic
   - [ ] Batch processing optimization
 
-- [ ] **Ollama Local Models** (`mod_ollama.py`)
-  - [ ] Local model management
-  - [ ] Custom model support
-  - [ ] Streaming embeddings
-  - [ ] Model switching
+- [x] **Ollama Local Models** (`mod_ollama.py`)
+  - [x] Local model management
+  - [x] Custom model support
+  - [x] Automatic server startup
+  - [x] Model downloading
 
 - [ ] **AWS Bedrock** (`mod_bedrock.py`)
   - [ ] Titan embeddings

@@ -33,6 +33,7 @@ dependencies = [
     "torch>=2.0.0",
     "numpy>=1.24.0",
     "orjson>=3.8.0",
+    "requests>=2.25.0",
     "sentence-transformers>=2.2.0",
 ]
 
