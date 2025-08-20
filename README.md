@@ -71,8 +71,9 @@ SEM uses a plugin-based architecture with four main component types:
 ├─────────────────┤    ├─────────────────┤    ├─────────────────┤    ├─────────────────┤
 │ • sentence-     │    │ • text          │    │ • local_disk    │    │ • orjson        │
 │   transformers  │    │ • code (TODO)   │    │ • s3 (TODO)     │    │ • json (TODO)   │
-│ • openai (TODO) │    │ • csv (TODO)    │    │ • gcs (TODO)    │    │                 │
-│ • ollama (TODO) │    │ • chunk_mux     │    │                 │    │                 │
+│ • openai        │    │ • csv (TODO)    │    │ • gcs (TODO)    │    │                 │
+│ • bedrock       │    │ • chunk_mux     │    │                 │    │                 │
+│ • ollama (TODO) │    │                 │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -137,6 +138,43 @@ Chunking strategies automatically configure based on embedding provider capabili
 - **Validation**: Ensures chunks fit within embedding constraints
 
 ## 🔧 Advanced Usage
+
+### Embedding Providers
+
+SEM supports multiple embedding providers with automatic capability detection:
+
+#### Sentence Transformers (Local)
+```python
+builder.set_embedding_provider("sentence_transformers", model="all-MiniLM-L6-v2")
+```
+- **Models**: Any HuggingFace sentence-transformers model
+- **GPU Support**: Apple Silicon MPS, NVIDIA CUDA, AMD ROCm
+- **Offline**: Works without internet after model download
+- **Cost**: Free
+
+#### OpenAI Embeddings (API)
+```python
+builder.set_embedding_provider("openai", 
+    model="text-embedding-3-small",
+    api_key="your-api-key"  # or set OPENAI_API_KEY env var
+)
+```
+- **Models**: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002
+- **Features**: Custom dimensions (3-small/large), high quality
+- **Rate Limits**: Automatic retry with exponential backoff
+- **Cost**: ~$0.00002-0.00013 per 1K tokens
+
+#### AWS Bedrock (API)
+```python
+builder.set_embedding_provider("bedrock",
+    model_id="amazon.titan-embed-text-v1",
+    region="us-east-1"
+)
+```
+- **Models**: Amazon Titan, Cohere Embed (English/Multilingual)
+- **Authentication**: IAM roles, profiles, or explicit credentials
+- **Enterprise**: AWS security, compliance, and billing
+- **Cost**: Pay-per-use through AWS billing
 
 ### Custom Configuration
 
