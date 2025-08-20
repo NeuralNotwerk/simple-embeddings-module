@@ -41,6 +41,10 @@ def test_imports():
         config = sem.create_default_config()
         print("  ✅ Default config creation successful")
 
+        # Test SEMSimple
+        simple_sem = sem.SEMSimple()
+        print("  ✅ SEMSimple import successful")
+
         # Test submodules
         from simple_embeddings_module.chunking import ChunkingProviderBase
         from simple_embeddings_module.embeddings import EmbeddingProviderBase
@@ -154,6 +158,56 @@ def test_gpu_acceleration():
         return False
 
 
+def test_semsimple():
+    """Test SEMSimple one-liner functionality."""
+    print("✨ Testing SEMSimple one-liner...")
+    
+    try:
+        from simple_embeddings_module import SEMSimple
+        
+        # Create instance
+        sem = SEMSimple(index_name="smoke_simple")
+        print("  ✅ SEMSimple instance created")
+        
+        # Add documents
+        texts = [
+            "Machine learning transforms software development.",
+            "Semantic search finds documents by meaning.",
+            "GPU acceleration speeds up deep learning."
+        ]
+        
+        success = sem.add_texts(texts)
+        if not success:
+            print("  ❌ Failed to add documents")
+            return False
+        
+        print(f"  ✅ Added {sem.count()} documents")
+        
+        # Search
+        results = sem.search("AI and machine learning", top_k=2)
+        if not results:
+            print("  ❌ Search returned no results")
+            return False
+        
+        print(f"  ✅ Search found {len(results)} results")
+        
+        # Verify result quality
+        if results[0]['score'] > 0.3:  # Should find relevant results
+            print("  ✅ Search quality verified")
+        else:
+            print("  ⚠️  Search results may not be optimal")
+        
+        # Clean up
+        sem.clear()
+        print("  ✅ Cleanup completed")
+        
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ SEMSimple test failed: {e}")
+        return False
+
+
 def main():
     """Run all smoke tests."""
     print("🧪 Simple Embeddings Module (SEM) Smoke Test")
@@ -161,7 +215,7 @@ def main():
 
     start_time = time.time()
     tests_passed = 0
-    total_tests = 4
+    total_tests = 5
 
     # Run all tests
     if test_imports():
@@ -171,6 +225,9 @@ def main():
         tests_passed += 1
 
     if test_gpu_acceleration():
+        tests_passed += 1
+
+    if test_semsimple():
         tests_passed += 1
 
     if test_end_to_end():

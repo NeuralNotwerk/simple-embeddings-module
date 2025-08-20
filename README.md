@@ -14,6 +14,18 @@
 
 ## 🚀 Quick Start
 
+### Super Simple (One-Liner!)
+
+```python
+# The simplest possible semantic search - just import and go!
+from simple_embeddings_module import SEMSimple
+
+sem = SEMSimple()
+sem.add_text("Machine learning is transforming software development.")
+results = sem.search("AI technology")
+print(results[0]['text'])  # Found it!
+```
+
 ### Installation
 
 ```bash
