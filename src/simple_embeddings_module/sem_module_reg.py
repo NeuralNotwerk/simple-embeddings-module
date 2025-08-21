@@ -304,9 +304,15 @@ class GlobalModuleDiscovery:
     def _discover_modules_in_folder(cls, module_type: str, folder_path: Path) -> None:
         """Discover modules in a specific folder"""
         for py_file in folder_path.glob("mod_*.py"):
-            if py_file.name.startswith("mod_") and not py_file.name.endswith(
-                "_base.py"
-            ):
+            if py_file.name.startswith("mod_") and not py_file.name.endswith("_base.py"):
+                # Exclude chunking implementation modules (not provider modules)
+                if module_type == "chunking" and (
+                    py_file.name.startswith("mod_chunking_ts") or
+                    py_file.name == "mod_chunking_ts_lang_lazy.py"
+                ):
+                    logger.debug(f"Skipping chunking implementation module: {py_file.name}")
+                    continue
+
                 try:
                     capabilities = cls._load_module_capabilities(module_type, py_file)
                     if capabilities:

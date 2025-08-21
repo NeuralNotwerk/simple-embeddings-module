@@ -1,9 +1,0 @@
-{
-  "index_name": "test_simple",
-  "created_at": "2025-08-20T05:21:52.838282",
-  "updated_at": "2025-08-20T05:21:52.838282",
-  "document_count": 1,
-  "embedding_dim": 384,
-  "model_name": null,
-  "storage_backend": "LocalDiskStorage"
-}

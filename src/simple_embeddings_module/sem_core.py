@@ -351,24 +351,51 @@ class SEMDatabase:
         document_ids = metadata.get("document_ids", [])
         documents = metadata.get("documents", [])
         document_metadata = metadata.get("document_metadata", [])
+        chunks = metadata.get("chunks", [])
+        chunk_to_doc_mapping = metadata.get("chunk_to_doc_mapping", [])
 
         for i in top_indices:
-            doc_idx = valid_doc_indices[i].item()
+            chunk_idx = valid_doc_indices[i].item()
             similarity = valid_similarities[i].item()
 
-            result = {
-                "document_id": (
-                    document_ids[doc_idx]
-                    if doc_idx < len(document_ids)
-                    else f"doc_{doc_idx}"
-                ),
-                "document": documents[doc_idx] if doc_idx < len(documents) else "",
-                "similarity_score": similarity,
-                "metadata": (
-                    document_metadata[doc_idx]
-                    if doc_idx < len(document_metadata)
+            # Get the chunk text
+            chunk_text = chunks[chunk_idx] if chunk_idx < len(chunks) else ""
+
+            # Map chunk back to original document
+            if chunk_idx < len(chunk_to_doc_mapping):
+                mapping = chunk_to_doc_mapping[chunk_idx]
+                original_doc_id = mapping.get("original_doc_id", f"doc_{chunk_idx}")
+                original_doc_index = mapping.get("original_doc_index", 0)
+                chunk_metadata = mapping.get("chunk_metadata", {})
+
+                # Get original document text
+                original_doc_text = (
+                    documents[original_doc_index] 
+                    if original_doc_index < len(documents) 
+                    else ""
+                )
+
+                # Get original document metadata
+                original_metadata = (
+                    document_metadata[original_doc_index]
+                    if original_doc_index < len(document_metadata)
                     else {}
-                ),
+                )
+            else:
+                # Fallback if mapping is missing
+                original_doc_id = f"doc_{chunk_idx}"
+                original_doc_text = chunk_text
+                original_metadata = {}
+                chunk_metadata = {}
+
+            result = {
+                "document_id": original_doc_id,
+                "document": chunk_text,  # Show the matching chunk text
+                "original_document": original_doc_text,  # Include full document for reference
+                "similarity_score": similarity,
+                "metadata": original_metadata,
+                "chunk_metadata": chunk_metadata,
+                "chunk_index": chunk_idx,
             }
 
             results.append(result)

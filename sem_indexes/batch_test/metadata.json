@@ -1,9 +1,0 @@
-{
-  "index_name": "batch_test",
-  "created_at": "2025-08-20T05:23:22.763039",
-  "updated_at": "2025-08-20T05:23:22.763039",
-  "document_count": 3,
-  "embedding_dim": 384,
-  "model_name": null,
-  "storage_backend": "LocalDiskStorage"
-}

@@ -274,6 +274,10 @@ simple-embeddings-module/
 │   │   └── mod_embeddings_base.py
 │   ├── chunking/            # Chunking strategies
 │   │   ├── mod_text.py
+│   │   ├── mod_code.py
+│   │   ├── mod_chunking_ts.py
+│   │   ├── mod_hierarchy_grouping.py    # NEW: Hierarchy-constrained grouping
+│   │   ├── mod_hierarchy_integration.py # NEW: Integration utilities
 │   │   ├── mod_chunk_mux.py
 │   │   └── mod_chunking_base.py
 │   ├── storage/             # Storage backends
@@ -287,8 +291,20 @@ simple-embeddings-module/
 │   ├── sem_config_builder.py # Configuration management
 │   ├── sem_module_reg.py    # Module registry system
 │   └── sem_utils.py         # Utility functions
+├── demo/                    # Demonstration scripts
+│   ├── demo_semantic_chunking.py      # Basic semantic chunking demo
+│   ├── demo_ultimate_code_chunking.py # Multi-language chunking demo
+│   ├── demo_hierarchy_grouping.py     # NEW: Hierarchy grouping demo
+│   ├── example_code_search.py         # Semantic search example
+│   ├── demo_code_samples.py           # Sample code for demos
+│   ├── run_demos.sh                   # Demo runner script
+│   └── README.md                      # Demo documentation
 ├── test/                    # Test suite
 │   ├── smoke_test.py        # End-to-end functionality test
+│   ├── test_hierarchy_grouping.py     # NEW: Hierarchy grouping tests
+│   ├── test_semantic_chunking.py      # Semantic chunking tests
+│   ├── test_code_chunking_provider.py # Code chunking provider tests
+│   ├── test_lazy_loading.py           # Tree-sitter lazy loading tests
 │   ├── run_tests.sh         # Test runner
 │   └── README.md            # Test documentation
 ├── requirements.txt
@@ -306,16 +322,39 @@ SEM includes a comprehensive test suite to verify functionality:
 # Run smoke test (recommended after installation)
 python test/smoke_test.py
 
+# Run specific tests
+python test/test_hierarchy_grouping.py
+python test/test_semantic_chunking.py
+python test/test_code_chunking_provider.py
+python test/test_lazy_loading.py
+
 # Or run full test suite
 ./test/run_tests.sh
 ```
 
-The smoke test verifies:
+## 🎭 Demos
+
+SEM includes comprehensive demos showcasing all capabilities:
+
+```bash
+# Run specific demos
+python demo/demo_semantic_chunking.py
+python demo/example_code_search.py
+python demo/demo_ultimate_code_chunking.py
+python demo/demo_hierarchy_grouping.py
+
+# Or run all demos
+./demo/run_demos.sh
+```
+
+The test suite verifies:
 - Python imports and module loading
 - CLI command availability
 - GPU acceleration detection
 - End-to-end semantic search functionality
+- Hierarchy-constrained semantic grouping
 - Search result quality
+- Real embedding provider functionality (no mocks!)
 
 ## 🤝 Contributing
 
