@@ -7,6 +7,7 @@
 - 🧠 **Semantic Search**: Find documents by meaning, not just keywords
 - ⚡ **GPU Acceleration**: Apple Silicon MPS, NVIDIA CUDA, AMD ROCm support via PyTorch
 - 📝 **Intelligent Chunking**: Auto-configured based on embedding model constraints
+- 🧩 **Hierarchy-Constrained Grouping**: Groups related code chunks within same scope boundaries
 - 🔒 **Secure**: No pickle files - pure JSON serialization with orjson
 - 🔧 **Modular**: "Bring your own" embedding models, storage backends, and chunking strategies
 - 🎯 **Production Ready**: Atomic writes, backups, compression, validation
@@ -70,10 +71,11 @@ SEM uses a plugin-based architecture with four main component types:
 │   Providers     │    │   Strategies    │    │   Backends      │    │   Providers     │
 ├─────────────────┤    ├─────────────────┤    ├─────────────────┤    ├─────────────────┤
 │ • sentence-     │    │ • text          │    │ • local_disk    │    │ • orjson        │
-│   transformers  │    │ • code (TODO)   │    │ • s3 (TODO)     │    │ • json (TODO)   │
-│ • openai        │    │ • csv (TODO)    │    │ • gcs (TODO)    │    │                 │
-│ • bedrock       │    │ • chunk_mux     │    │                 │    │                 │
-│ • ollama        │    │                 │    │                 │    │                 │
+│   transformers  │    │ • code          │    │ • s3 (TODO)     │    │ • json (TODO)   │
+│ • openai        │    │ • hierarchy     │    │ • gcs (TODO)    │    │                 │
+│ • bedrock       │    │   grouping      │    │                 │    │                 │
+│ • ollama        │    │ • semantic      │    │                 │    │                 │
+│ • llamacpp      │    │ • chunk_mux     │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -136,6 +138,25 @@ Chunking strategies automatically configure based on embedding provider capabili
 - **Overlap**: 10% of chunk size for context preservation
 - **Boundaries**: Sentence, paragraph, or word boundaries
 - **Validation**: Ensures chunks fit within embedding constraints
+
+### Hierarchy-Constrained Grouping
+
+Advanced semantic grouping that respects code structure boundaries:
+
+- **Scope Boundaries**: Groups chunks ONLY within same parent scope (classes, modules)
+- **Flat Storage**: Efficient storage with rich metadata (line numbers, hierarchy references)
+- **Semantic Groups**: Related chunks within same scope get combined embeddings
+- **Cross-Scope Tracking**: Similar functions across classes remain separate but searchable
+- **Real Embeddings**: Uses actual sentence-transformers throughout (no mocks!)
+
+```python
+# Example: Grouping respects hierarchy boundaries
+my_file.py(
+  MyClass1(func1(), func2(), func3()),  # ✅ Can group within MyClass1
+  MyClass2(func1(), func2(), func3())   # ✅ Can group within MyClass2
+)
+# ❌ Never groups across MyClass1 ↔ MyClass2 boundaries
+```
 
 ## 🔧 Advanced Usage
 
