@@ -71,7 +71,7 @@ SEM uses a plugin-based architecture with four main component types:
 │   Providers     │    │   Strategies    │    │   Backends      │    │   Providers     │
 ├─────────────────┤    ├─────────────────┤    ├─────────────────┤    ├─────────────────┤
 │ • sentence-     │    │ • text          │    │ • local_disk    │    │ • orjson        │
-│   transformers  │    │ • code          │    │ • s3 (TODO)     │    │ • json (TODO)   │
+│   transformers  │    │ • code          │    │ • s3            │    │ • json (TODO)   │
 │ • openai        │    │ • hierarchy     │    │ • gcs (TODO)    │    │                 │
 │ • bedrock       │    │   grouping      │    │                 │    │                 │
 │ • ollama        │    │ • semantic      │    │                 │    │                 │
@@ -208,6 +208,32 @@ builder.set_embedding_provider("ollama",
 - **Features**: Automatic server management, model downloading
 - **Privacy**: Fully local processing, no data leaves your machine
 - **Cost**: Free (after initial model download)
+
+### Storage Backends
+
+SEM supports multiple storage backends for different deployment scenarios:
+
+#### Local Disk Storage
+```python
+builder.set_storage_backend("local_disk", path="./my_indexes")
+```
+- **Use Case**: Development, single-machine deployments
+- **Features**: Fast access, atomic writes, compression
+- **Cost**: Free (local storage only)
+
+#### Amazon S3 Storage
+```python
+builder.set_storage_backend("s3", 
+    bucket_name="my-sem-bucket",
+    region="us-west-2",
+    compression=True,
+    encryption="AES256"
+)
+```
+- **Use Case**: Production, cloud deployments, team collaboration
+- **Features**: Unlimited scalability, global access, encryption, versioning
+- **Authentication**: IAM roles, access keys, or session tokens
+- **Cost**: Pay-per-use S3 pricing
 
 ### Custom Configuration
 

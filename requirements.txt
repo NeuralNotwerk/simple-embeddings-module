@@ -10,6 +10,9 @@ sentence-transformers>=2.2.0
 # Tree-sitter for semantic code chunking
 tree-sitter>=0.25.0
 
+# Cloud storage support
+boto3>=1.26.0  # For S3 storage backend
+
 # Optional: For development and testing
 # pytest>=7.0.0
 # black>=23.0.0
