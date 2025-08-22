@@ -436,13 +436,36 @@ class S3Storage(StorageBackendBase):
             # Get last modified time
             last_modified = max(metadata_obj["LastModified"], vectors_obj["LastModified"])
             
+            # Load metadata to get actual document count and embedding dimensions
+            try:
+                metadata_data = self._download_object(metadata_key)
+                metadata_bytes = self._decompress_data(metadata_data)
+                metadata = self.serializer.deserialize_metadata(metadata_bytes)
+                
+                # Calculate document count from document_ids
+                document_count = len(metadata.get("document_ids", []))
+                
+                # Get embedding dimensions from vector shape
+                vector_shape = metadata.get("vector_shape", [])
+                embedding_dim = vector_shape[1] if len(vector_shape) >= 2 else 0
+                
+                # Get model name from embedding config
+                embedding_config = metadata.get("embedding_config", {})
+                model_name = embedding_config.get("model", embedding_config.get("model_id", None))
+                
+            except Exception as e:
+                logger.warning(f"Could not load metadata for detailed info: {e}")
+                document_count = 0
+                embedding_dim = 0
+                model_name = None
+            
             return IndexInfo(
                 index_name=index_name,
                 created_at=last_modified.isoformat(),
                 updated_at=last_modified.isoformat(),
-                document_count=0,  # Not tracked at storage level
-                embedding_dim=0,   # Not available without loading metadata
-                model_name=None,   # Not available without loading metadata
+                document_count=document_count,
+                embedding_dim=embedding_dim,
+                model_name=model_name,
                 size_bytes=total_size,
                 backend_type="s3",
             )

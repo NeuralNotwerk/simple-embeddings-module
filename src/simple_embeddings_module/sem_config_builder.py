@@ -255,7 +255,7 @@ class SEMConfigBuilder:
 
         if not self.config["index"]:
             self.set_index_config(
-                "default", max_documents=100000, similarity_threshold=0.7
+                "sem_simple_index", max_documents=100000, similarity_threshold=0.1
             )
 
         # Validate configuration consistency

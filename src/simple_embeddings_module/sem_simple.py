@@ -32,12 +32,12 @@ class SEMSimple:
         >>> print(results[0]['text'])
     """
 
-    def __init__(self, index_name: str = "default", storage_path: str = "./sem_indexes"):
+    def __init__(self, index_name: str = "sem_simple_index", storage_path: str = "./sem_indexes"):
         """
         Initialize SEMSimple with sensible defaults.
 
         Args:
-            index_name: Name for the search index (default: "default")
+            index_name: Name for the search index (default: "sem_simple_index")
             storage_path: Where to store the index files (default: "./sem_indexes")
         """
         self.index_name = index_name
@@ -66,8 +66,24 @@ class SEMSimple:
 
                 # Create database
                 self._db = SEMDatabase(config=config)
+                
+                # Check for existing index
+                existing_info = self._db.get_index_info()
+                if existing_info:
+                    # Handle both dict and object returns
+                    doc_count = getattr(existing_info, 'document_count', existing_info.get('document_count', 0))
+                    if doc_count > 0:
+                        logger.info(f"Found existing index with {doc_count} documents")
+                        print(f"📚 Found existing semantic search index with {doc_count} documents")
+                        print(f"🔍 Ready to search! Use .search('your query') to find documents")
+                    else:
+                        logger.info("No existing index found - ready to add documents")
+                        print(f"📝 Ready to add documents! Use .add_text('your content') to start")
+                else:
+                    logger.info("No existing index found - ready to add documents")
+                    print(f"📝 Ready to add documents! Use .add_text('your content') to start")
+                
                 self._initialized = True
-
                 logger.info("SEMSimple database initialized successfully")
 
             except Exception as e:

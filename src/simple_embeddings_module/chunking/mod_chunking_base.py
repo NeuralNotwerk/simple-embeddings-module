@@ -42,6 +42,33 @@ class ChunkMetadata:
         if self.overlap_with is None:
             self.overlap_with = []
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            "chunk_id": self.chunk_id,
+            "document_id": self.document_id,
+            "chunk_index": self.chunk_index,
+            "start_position": self.start_position,
+            "end_position": self.end_position,
+            "chunk_type": self.chunk_type,
+            "parent_chunk_id": self.parent_chunk_id,
+            "overlap_with": self.overlap_with,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChunkMetadata":
+        """Create from dictionary for JSON deserialization"""
+        return cls(
+            chunk_id=data["chunk_id"],
+            document_id=data["document_id"],
+            chunk_index=data["chunk_index"],
+            start_position=data["start_position"],
+            end_position=data["end_position"],
+            chunk_type=data["chunk_type"],
+            parent_chunk_id=data.get("parent_chunk_id"),
+            overlap_with=data.get("overlap_with", []),
+        )
+
 
 @dataclass
 class ChunkedDocument:

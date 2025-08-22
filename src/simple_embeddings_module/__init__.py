@@ -5,6 +5,15 @@ from .sem_core import SEMDatabase, create_database, discover_modules
 from .sem_simple import SEMSimple
 from .sem_utils import generate_config_template, load_config, save_config
 
+# AWS integration (optional - requires boto3)
+try:
+    from .sem_simple_aws import SEMSimpleAWS, simple_aws
+    AWS_AVAILABLE = True
+    __all_aws__ = ["SEMSimpleAWS", "simple_aws"]
+except ImportError:
+    AWS_AVAILABLE = False
+    __all_aws__ = []
+
 __version__ = "0.1.0"
 __all__ = [
     "SEMSimple",
@@ -16,4 +25,4 @@ __all__ = [
     "load_config",
     "save_config",
     "generate_config_template",
-]
+] + __all_aws__

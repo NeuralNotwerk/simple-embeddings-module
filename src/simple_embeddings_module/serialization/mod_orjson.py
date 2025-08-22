@@ -111,29 +111,106 @@ class OrjsonSerializationProvider(SerializationProviderBase):
 
         return tensor
 
+    def validate_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Validate metadata dictionary with orjson-specific rules"""
+        if not isinstance(metadata, dict):
+            raise SerializationProviderError("Metadata must be a dictionary")
+        
+        # Use custom validation that allows ChunkMetadata objects
+        self._validate_orjson_serializable(metadata)
+
+    def _validate_orjson_serializable(self, obj, path: str = "root") -> None:
+        """Validate that object can be serialized with orjson and custom default function"""
+        if obj is None or isinstance(obj, (bool, int, float, str)):
+            return
+        elif isinstance(obj, dict):
+            for key, value in obj.items():
+                if not isinstance(key, str):
+                    raise SerializationProviderError(f"Dictionary key must be string at {path}.{key}")
+                self._validate_orjson_serializable(value, f"{path}.{key}")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                self._validate_orjson_serializable(item, f"{path}[{i}]")
+        elif hasattr(obj, 'to_dict'):
+            # Objects with to_dict method can be serialized with our custom default
+            return
+        elif hasattr(obj, '__dict__'):
+            # Objects with __dict__ can be serialized with our custom default
+            return
+        else:
+            # For other types, let orjson handle it with the default function
+            return
+
     def serialize_metadata(self, metadata: Dict[str, Any]) -> bytes:
         """Serialize metadata dictionary to bytes"""
         self.validate_metadata(metadata)
-
-        return orjson.dumps(metadata, option=self.orjson_options)
+        
+        # Use custom default function to handle ChunkMetadata objects
+        return orjson.dumps(metadata, option=self.orjson_options, default=_json_default)
 
     def deserialize_metadata(self, data: bytes) -> Dict[str, Any]:
         """Deserialize bytes back to metadata dictionary"""
         try:
-            return orjson.loads(data)
+            metadata = orjson.loads(data)
+            # Restore ChunkMetadata objects
+            return self._restore_objects(metadata)
         except orjson.JSONDecodeError as e:
             raise SerializationProviderError(f"Invalid JSON metadata: {e}")
 
+    def _restore_objects(self, obj):
+        """Recursively restore objects from serialized form"""
+        if isinstance(obj, dict):
+            if '_object_type' in obj and obj['_object_type'] == 'ChunkMetadata':
+                # Restore ChunkMetadata object
+                try:
+                    from ..chunking.mod_chunking_base import ChunkMetadata
+                    obj_copy = obj.copy()
+                    del obj_copy['_object_type']
+                    return ChunkMetadata.from_dict(obj_copy)
+                except ImportError:
+                    # If import fails, return as dict without the type marker
+                    obj_copy = obj.copy()
+                    if '_object_type' in obj_copy:
+                        del obj_copy['_object_type']
+                    return obj_copy
+            else:
+                # Recursively process dictionary values
+                return {key: self._restore_objects(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            # Recursively process list items
+            return [self._restore_objects(item) for item in obj]
+        else:
+            return obj
+
     def _serialize_combined_data(self, data: Dict[str, Any]) -> bytes:
         """Serialize combined data structure"""
-        return orjson.dumps(data, option=self.orjson_options)
+        return orjson.dumps(data, option=self.orjson_options, default=_json_default)
 
     def _deserialize_combined_data(self, data: bytes) -> Dict[str, Any]:
         """Deserialize combined data structure"""
         try:
-            return orjson.loads(data)
+            result = orjson.loads(data)
+            return self._restore_objects(result)
         except orjson.JSONDecodeError as e:
             raise SerializationProviderError(f"Invalid JSON data: {e}")
+
+
+def _json_default(obj):
+    """Custom default function for orjson to handle non-serializable objects"""
+    # Handle ChunkMetadata objects
+    if hasattr(obj, 'to_dict'):
+        result = obj.to_dict()
+        result['_object_type'] = obj.__class__.__name__
+        return result
+    
+    # Handle other common non-serializable types
+    if hasattr(obj, '__dict__'):
+        result = obj.__dict__.copy()
+        result['_object_type'] = obj.__class__.__name__
+        return result
+    
+    # Fallback to string representation
+    return str(obj)
 
 
 # Legacy functions for backward compatibility

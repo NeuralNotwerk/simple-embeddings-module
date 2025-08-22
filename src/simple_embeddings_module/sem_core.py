@@ -89,9 +89,9 @@ class SEMDatabase:
             "storage": {"backend": "local_disk", "path": "./indexes"},
             "serialization": {"provider": "orjson"},
             "index": {
-                "name": "default",
+                "name": "sem_simple_index",
                 "max_documents": 100000,
-                "similarity_threshold": 0.7,
+                "similarity_threshold": 0.1,
             },
         }
 
@@ -210,7 +210,7 @@ class SEMDatabase:
         # Prepare index metadata
         index_metadata = {
             "document_ids": document_ids,
-            "documents": documents,
+            "documents": dict(zip(document_ids, documents)),  # Store as dict for easy lookup
             "document_metadata": metadata or [{} for _ in documents],
             "chunks": all_chunks,
             "chunk_to_doc_mapping": chunk_to_doc_mapping,
@@ -222,7 +222,7 @@ class SEMDatabase:
         }
 
         # Save to storage
-        index_name = self.config.get("index", {}).get("name", "default")
+        index_name = self.config.get("index", {}).get("name", "sem_simple_index")
         success = self._storage_backend.save_index(
             embeddings, index_metadata, index_name
         )
@@ -267,7 +267,7 @@ class SEMDatabase:
         start_time = time.time()
 
         # Load index
-        index_name = self.config.get("index", {}).get("name", "default")
+        index_name = self.config.get("index", {}).get("name", "sem_simple_index")
 
         if not self._storage_backend.index_exists(index_name):
             raise ValueError(f"Index '{index_name}' does not exist")
@@ -317,8 +317,8 @@ class SEMDatabase:
             document_vectors.norm(dim=1, keepdim=True) + 1e-12
         )
 
-        # Compute cosine similarities
-        similarities = torch.mv(doc_norms, query_norm)
+        # Compute cosine similarities using dot product
+        similarities = torch.matmul(doc_norms, query_norm)
 
         return similarities
 
@@ -339,6 +339,10 @@ class SEMDatabase:
         # Get valid similarities and indices
         valid_similarities = similarities[valid_indices]
         valid_doc_indices = torch.nonzero(valid_indices).squeeze()
+        
+        # Handle case where squeeze() returns 0-dimensional tensor (single result)
+        if valid_doc_indices.dim() == 0:
+            valid_doc_indices = valid_doc_indices.unsqueeze(0)
 
         # Sort by similarity (descending)
         sorted_indices = torch.argsort(valid_similarities, descending=True)
@@ -368,17 +372,20 @@ class SEMDatabase:
                 original_doc_index = mapping.get("original_doc_index", 0)
                 chunk_metadata = mapping.get("chunk_metadata", {})
 
-                # Get original document text
-                original_doc_text = (
-                    documents[original_doc_index] 
-                    if original_doc_index < len(documents) 
-                    else ""
-                )
+                # Get original document text using the document ID
+                original_doc_text = documents.get(original_doc_id, "")
+                
+                # If documents is stored as a dict, we need to use the ID directly
+                # If it's empty, try to get it from the document_ids list
+                if not original_doc_text and original_doc_index < len(document_ids):
+                    doc_id_from_list = document_ids[original_doc_index]
+                    original_doc_text = documents.get(doc_id_from_list, "")
 
                 # Get original document metadata
                 original_metadata = (
                     document_metadata[original_doc_index]
-                    if original_doc_index < len(document_metadata)
+                    if isinstance(document_metadata, list) and original_doc_index < len(document_metadata)
+                    else document_metadata.get(original_doc_id, {}) if isinstance(document_metadata, dict)
                     else {}
                 )
             else:
@@ -404,7 +411,7 @@ class SEMDatabase:
 
     def get_index_info(self) -> Optional[Dict[str, Any]]:
         """Get information about the current index"""
-        index_name = self.config.get("index", {}).get("name", "default")
+        index_name = self.config.get("index", {}).get("name", "sem_simple_index")
         return self._storage_backend.get_index_info(index_name)
 
     def list_available_modules(self) -> Dict[str, List[str]]:

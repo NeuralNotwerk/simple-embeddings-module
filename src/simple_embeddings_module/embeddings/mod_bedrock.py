@@ -349,6 +349,14 @@ class BedrockEmbeddingProvider(EmbeddingProviderBase):
                     f"Unknown response format: {response_body}"
                 )
 
+    def get_embedding_dimension(self) -> int:
+        """Get the dimensionality of embeddings produced by this provider"""
+        return self.CAPABILITIES.get("embedding_dimension", 1536)
+
+    def get_max_sequence_length(self) -> int:
+        """Get the maximum sequence length supported by this provider"""
+        return self.CAPABILITIES.get("max_sequence_length", 8000)
+
     def get_capabilities(self) -> Dict[str, Any]:
         """Return provider capabilities"""
         capabilities = super().get_capabilities()
