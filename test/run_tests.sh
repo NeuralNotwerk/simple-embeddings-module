@@ -69,6 +69,10 @@ echo ""
 echo "⚡ Running lazy loading tests..."
 python test/test_lazy_loading.py
 
+echo ""
+echo "🎯 Running dynamic CLI validation..."
+python test/validate_dynamic_cli.py
+
 # Run S3 tests if requested
 if [[ "$INCLUDE_S3" == true ]]; then
     echo ""

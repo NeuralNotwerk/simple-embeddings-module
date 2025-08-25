@@ -26,7 +26,7 @@ impl Database for PostgresDB {
         self.connected = true;
         Ok(())
     }
-    
+
     fn execute(&self, query: &str) -> Result<Vec<String>, String> {
         if !self.connected {
             return Err("Not connected".to_string());
@@ -54,13 +54,13 @@ impl UserService {
             db,
         }
     }
-    
+
     pub fn add_user(&self, user: User) -> Result<(), String> {
         let mut users = self.users.lock().unwrap();
         users.insert(user.id, user);
         Ok(())
     }
-    
+
     pub fn get_user(&self, id: u32) -> Option<User> {
         let users = self.users.lock().unwrap();
         users.get(&id).cloned()
@@ -70,17 +70,17 @@ impl UserService {
 fn main() {
     let mut db = PostgresDB::new("postgresql://localhost:5432/demo".to_string());
     db.connect().expect("Failed to connect");
-    
+
     let service = UserService::new(Box::new(db));
-    
+
     let user = User {
         id: 1,
         name: "Alice".to_string(),
         email: "alice@example.com".to_string(),
     };
-    
+
     service.add_user(user).expect("Failed to add user");
-    
+
     if let Some(retrieved_user) = service.get_user(1) {
         println!("Retrieved user: {:?}", retrieved_user);
     }

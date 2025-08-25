@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Example: Semantic code search using tree-sitter chunking."""
 
-import tempfile
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Import our modules
-from src.simple_embeddings_module.chunking.mod_chunking_ts import ts_get_code_chunks
 from simple_embeddings_module import SEMSimple
+from src.simple_embeddings_module.chunking.mod_chunking_ts import ts_get_code_chunks
 
 # Sample Python codebase for demonstration
 SAMPLE_FILES = {
@@ -38,10 +38,10 @@ def save_json_file(data: Dict, filepath: str) -> None:
 
 class DataValidator:
     """Validates data structures."""
-    
+
     def __init__(self, schema: Dict):
         self.schema = schema
-    
+
     def validate_dict(self, data: Dict) -> bool:
         """Validate a dictionary against the schema."""
         for key, expected_type in self.schema.items():
@@ -51,7 +51,7 @@ class DataValidator:
                 return False
         return True
 ''',
-    
+
     "database.py": '''
 """Database connection and operations."""
 
@@ -61,11 +61,11 @@ from contextlib import contextmanager
 
 class DatabaseManager:
     """Manages SQLite database connections and operations."""
-    
+
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.init_database()
-    
+
     def init_database(self) -> None:
         """Initialize the database with required tables."""
         with self.get_connection() as conn:
@@ -76,7 +76,7 @@ class DatabaseManager:
                     email TEXT UNIQUE NOT NULL
                 )
             """)
-    
+
     @contextmanager
     def get_connection(self):
         """Get a database connection with automatic cleanup."""
@@ -89,7 +89,7 @@ class DatabaseManager:
             raise
         finally:
             conn.close()
-    
+
     def create_user(self, name: str, email: str) -> int:
         """Create a new user and return their ID."""
         with self.get_connection() as conn:
@@ -98,7 +98,7 @@ class DatabaseManager:
                 (name, email)
             )
             return cursor.lastrowid
-    
+
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         """Get user by email address."""
         with self.get_connection() as conn:
@@ -111,7 +111,7 @@ class DatabaseManager:
                 return {"id": row[0], "name": row[1], "email": row[2]}
             return None
 ''',
-    
+
     "api.py": '''
 """REST API endpoints."""
 
@@ -133,10 +133,10 @@ validator = DataValidator(USER_SCHEMA)
 def create_user():
     """Create a new user."""
     data = request.get_json()
-    
+
     if not validator.validate_dict(data):
         return jsonify({"error": "Invalid user data"}), 400
-    
+
     try:
         user_id = db.create_user(data["name"], data["email"])
         return jsonify({"id": user_id, "message": "User created"}), 201
@@ -164,11 +164,11 @@ if __name__ == "__main__":
 def main():
     print("🔍 Code Search with Semantic Chunking Demo")
     print("=" * 60)
-    
+
     # Create temporary directory for our sample codebase
     temp_dir = tempfile.mkdtemp()
     print(f"📁 Created sample codebase in: {temp_dir}")
-    
+
     try:
         # Write sample files
         file_paths = []
@@ -178,74 +178,74 @@ def main():
                 f.write(content)
             file_paths.append(str(file_path))
             print(f"   📄 {filename}")
-        
-        print(f"\n🌳 Chunking code files with tree-sitter...")
-        
+
+        print("\n🌳 Chunking code files with tree-sitter...")
+
         # Initialize semantic search
         sem = SEMSimple()
-        
+
         # Process each file with semantic chunking
         total_chunks = 0
         for file_path in file_paths:
             filename = Path(file_path).name
             print(f"\n📦 Processing {filename}:")
-            
+
             # Get semantic chunks
             chunks = ts_get_code_chunks(file_path)
             total_chunks += len(chunks)
-            
+
             # Add each chunk to the search index
             for i, chunk in enumerate(chunks, 1):
                 # Create a meaningful document ID
                 doc_id = f"{filename}:chunk_{i}"
                 sem.add_text(chunk, doc_id=doc_id)
-                
+
                 # Show what we're indexing
                 first_line = chunk.split('\n')[0].strip()
                 if len(first_line) > 50:
                     first_line = first_line[:50] + "..."
                 print(f"   ✅ Chunk {i}: {first_line}")
-        
+
         print(f"\n📊 Indexed {total_chunks} semantic chunks from {len(file_paths)} files")
-        
+
         # Now demonstrate semantic search
-        print(f"\n🔍 Semantic Code Search Examples:")
+        print("\n🔍 Semantic Code Search Examples:")
         print("-" * 40)
-        
+
         search_queries = [
             "database connection and SQL operations",
-            "JSON file handling and parsing", 
+            "JSON file handling and parsing",
             "user validation and data checking",
             "Flask REST API endpoints",
             "hash function for strings"
         ]
-        
+
         for query in search_queries:
             print(f"\n🔎 Query: '{query}'")
             results = sem.search(query, top_k=2)
-            
+
             for i, result in enumerate(results, 1):
                 score = result['score']
                 doc_id = result.get('doc_id', 'unknown')
                 text_preview = result['text'][:100].replace('\n', ' ')
                 if len(result['text']) > 100:
                     text_preview += "..."
-                
+
                 print(f"   {i}. {doc_id} (score: {score:.3f})")
                 print(f"      {text_preview}")
-        
-        print(f"\n✨ Benefits of Semantic Code Chunking:")
+
+        print("\n✨ Benefits of Semantic Code Chunking:")
         print("   • Each chunk is a complete semantic unit (function, class, etc.)")
         print("   • Better search precision - finds exact functions/classes")
         print("   • Preserves code context and structure")
         print("   • Works with any programming language via tree-sitter")
         print("   • Perfect for code documentation and exploration")
-        
+
     finally:
         # Clean up temporary files
         import shutil
         shutil.rmtree(temp_dir)
-        print(f"\n🧹 Cleaned up temporary files")
+        print("\n🧹 Cleaned up temporary files")
 
 if __name__ == "__main__":
     main()

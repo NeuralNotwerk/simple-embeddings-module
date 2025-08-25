@@ -11,30 +11,30 @@ from datetime import datetime
 
 class Calculator:
     """A feature-rich calculator with history tracking."""
-    
+
     def __init__(self, precision: int = 2):
         self.precision = precision
         self.history: List[Dict] = []
         self.memory: float = 0.0
-    
+
     def add(self, a: float, b: float) -> float:
         """Add two numbers."""
         result = round(a + b, self.precision)
         self._record_operation("add", [a, b], result)
         return result
-    
+
     def multiply(self, a: float, b: float) -> float:
         """Multiply two numbers."""
         result = round(a * b, self.precision)
         self._record_operation("multiply", [a, b], result)
         return result
-    
+
     def power(self, base: float, exponent: float) -> float:
         """Calculate power."""
         result = round(math.pow(base, exponent), self.precision)
         self._record_operation("power", [base, exponent], result)
         return result
-    
+
     def _record_operation(self, op: str, operands: List[float], result: float):
         """Record operation in history."""
         self.history.append({
@@ -43,11 +43,11 @@ class Calculator:
             "result": result,
             "timestamp": datetime.now().isoformat()
         })
-    
+
     def get_history(self) -> List[Dict]:
         """Get calculation history."""
         return self.history.copy()
-    
+
     def clear_history(self) -> None:
         """Clear calculation history."""
         self.history.clear()
@@ -108,7 +108,7 @@ class UserService {
         this.users = new Map();
         this.initializeDefaults();
     }
-    
+
     initializeDefaults() {
         this.users.set('admin', {
             id: 'admin',
@@ -117,7 +117,7 @@ class UserService {
             created: new Date()
         });
     }
-    
+
     async createUser(userData) {
         const user = {
             id: this.generateId(),
@@ -125,19 +125,19 @@ class UserService {
             created: new Date(),
             lastLogin: null
         };
-        
+
         this.users.set(user.id, user);
         await this.db.save('users', user);
         return user;
     }
-    
+
     async getUserById(id) {
         if (this.users.has(id)) {
             return this.users.get(id);
         }
         return await this.db.findById('users', id);
     }
-    
+
     generateId() {
         return Math.random().toString(36).substr(2, 9);
     }
@@ -166,14 +166,14 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        
+
         if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'Invalid email' });
         }
-        
+
         const hashedPassword = await hashPassword(password);
         const user = await userService.createUser({ name, email, password: hashedPassword });
-        
+
         res.status(201).json({ success: true, data: user });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -214,12 +214,12 @@ type UserFormData = Omit<User, 'id' | 'created' | 'lastLogin'>;
 class UserApiClient {
     private baseUrl: string;
     private token?: string;
-    
+
     constructor(baseUrl: string, token?: string) {
         this.baseUrl = baseUrl;
         this.token = token;
     }
-    
+
     async getUsers(): Promise<ApiResponse<User[]>> {
         try {
             const response = await axios.get(`${this.baseUrl}/api/users`, {
@@ -230,7 +230,7 @@ class UserApiClient {
             return { success: false, error: error.message };
         }
     }
-    
+
     async createUser(userData: UserFormData): Promise<ApiResponse<User>> {
         try {
             const response = await axios.post(`${this.baseUrl}/api/users`, userData, {
@@ -241,16 +241,16 @@ class UserApiClient {
             return { success: false, error: error.message };
         }
     }
-    
+
     private getHeaders(): Record<string, string> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json'
         };
-        
+
         if (this.token) {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
-        
+
         return headers;
     }
 }
@@ -259,13 +259,13 @@ const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    
+
     const apiClient = useMemo(() => new UserApiClient('/api'), []);
-    
+
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         setError(null);
-        
+
         try {
             const response = await apiClient.getUsers();
             if (response.success && response.data) {
@@ -279,21 +279,21 @@ const UserManagement: React.FC = () => {
             setLoading(false);
         }
     }, [apiClient]);
-    
+
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
-    
+
     const handleCreateUser = async (userData: UserFormData) => {
         const response = await apiClient.createUser(userData);
         if (response.success && response.data) {
             setUsers(prev => [...prev, response.data!]);
         }
     };
-    
+
     if (loading) return <div>Loading users...</div>;
     if (error) return <div>Error: {error}</div>;
-    
+
     return (
         <div className="user-management">
             <h2>User Management</h2>

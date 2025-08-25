@@ -7,7 +7,7 @@ class EventEmitter {
     constructor() {
         this.events = new Map();
     }
-    
+
     on(event, callback) {
         if (!this.events.has(event)) {
             this.events.set(event, []);
@@ -15,7 +15,7 @@ class EventEmitter {
         this.events.get(event).push(callback);
         return this;
     }
-    
+
     emit(event, ...args) {
         const callbacks = this.events.get(event);
         if (callbacks) {
@@ -23,7 +23,7 @@ class EventEmitter {
         }
         return this;
     }
-    
+
     off(event, callback) {
         const callbacks = this.events.get(event);
         if (callbacks) {
@@ -44,7 +44,7 @@ class APIClient extends EventEmitter {
         this.timeout = options.timeout || 5000;
         this.retries = options.retries || 3;
     }
-    
+
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
@@ -55,42 +55,42 @@ class APIClient extends EventEmitter {
             },
             ...options
         };
-        
+
         for (let attempt = 1; attempt <= this.retries; attempt++) {
             try {
                 this.emit('request:start', { url, attempt });
-                
+
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-                
+
                 const response = await fetch(url, {
                     ...config,
                     signal: controller.signal
                 });
-                
+
                 clearTimeout(timeoutId);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const data = await response.json();
                 this.emit('request:success', { url, data });
                 return data;
-                
+
             } catch (error) {
                 this.emit('request:error', { url, error, attempt });
-                
+
                 if (attempt === this.retries) {
                     throw error;
                 }
-                
+
                 // Exponential backoff
                 await this.delay(Math.pow(2, attempt) * 1000);
             }
         }
     }
-    
+
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -100,9 +100,9 @@ class APIClient extends EventEmitter {
 const DataProcessor = {
     // Higher-order functions
     pipe: (...functions) => (value) => functions.reduce((acc, fn) => fn(acc), value),
-    
+
     compose: (...functions) => (value) => functions.reduceRight((acc, fn) => fn(acc), value),
-    
+
     // Array processing utilities
     chunk: (array, size) => {
         const chunks = [];
@@ -111,7 +111,7 @@ const DataProcessor = {
         }
         return chunks;
     },
-    
+
     groupBy: (array, keyFn) => {
         return array.reduce((groups, item) => {
             const key = keyFn(item);
@@ -122,7 +122,7 @@ const DataProcessor = {
             return groups;
         }, {});
     },
-    
+
     // Data transformation pipeline
     processUserData: function(users) {
         return this.pipe(
@@ -141,17 +141,17 @@ const DataProcessor = {
             }))
         )(users);
     },
-    
+
     calculateAge: (birthDate) => {
         const today = new Date();
         const birth = new Date(birthDate);
         let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
-        
+
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
             age--;
         }
-        
+
         return age;
     }
 };
@@ -160,17 +160,17 @@ const DataProcessor = {
 class DatabaseManager {
     #connection = null;
     #isConnected = false;
-    
+
     constructor(config) {
         this.config = config;
         this.queryCache = new Map();
     }
-    
+
     async connect() {
         if (this.#isConnected) {
             return this.#connection;
         }
-        
+
         try {
             // Simulated database connection
             this.#connection = await this.#establishConnection();
@@ -182,7 +182,7 @@ class DatabaseManager {
             throw error;
         }
     }
-    
+
     async #establishConnection() {
         // Simulate async connection process
         return new Promise((resolve, reject) => {
@@ -195,19 +195,19 @@ class DatabaseManager {
             }, 100);
         });
     }
-    
+
     async query(sql, params = []) {
         if (!this.#isConnected) {
             await this.connect();
         }
-        
+
         const cacheKey = `${sql}:${JSON.stringify(params)}`;
-        
+
         if (this.queryCache.has(cacheKey)) {
             console.log('Cache hit for query:', sql);
             return this.queryCache.get(cacheKey);
         }
-        
+
         // Simulate query execution
         const result = await new Promise(resolve => {
             setTimeout(() => {
@@ -218,7 +218,7 @@ class DatabaseManager {
                 });
             }, 50);
         });
-        
+
         this.queryCache.set(cacheKey, result);
         return result;
     }
@@ -227,25 +227,25 @@ class DatabaseManager {
 // Demo execution
 async function runDemo() {
     console.log('🚀 Starting JavaScript Demo...\n');
-    
+
     // API Client demo
     const api = new APIClient('https://jsonplaceholder.typicode.com');
-    
+
     api.on('request:start', ({ url, attempt }) => {
         console.log(`📡 Request ${attempt}: ${url}`);
     });
-    
+
     api.on('request:success', ({ data }) => {
         console.log('✅ Request successful, received data');
     });
-    
+
     try {
         const userData = await api.request('/users/1');
         console.log('User data:', userData.name);
     } catch (error) {
         console.log('❌ API request failed:', error.message);
     }
-    
+
     // Data processing demo
     const sampleUsers = [
         { firstName: 'John', lastName: 'Doe', birthDate: '1990-05-15', department: 'Engineering', active: true },
@@ -253,18 +253,18 @@ async function runDemo() {
         { firstName: 'Bob', lastName: 'Johnson', birthDate: '1992-12-03', department: 'Engineering', active: false },
         { firstName: 'Alice', lastName: 'Brown', birthDate: '1988-03-10', department: 'Sales', active: true }
     ];
-    
+
     const processedData = DataProcessor.processUserData(sampleUsers);
     console.log('\n📊 Processed user data by department:');
     processedData.forEach(dept => {
         console.log(`${dept.department}: ${dept.count} users, avg age ${dept.averageAge.toFixed(1)}`);
     });
-    
+
     // Database demo
     const db = new DatabaseManager({ host: 'localhost', port: 5432 });
     const result = await db.query('SELECT * FROM users WHERE active = ?', [true]);
     console.log('\n💾 Database query result:', result.rowCount, 'rows');
-    
+
     console.log('\n🎉 JavaScript demo completed!');
 }
 

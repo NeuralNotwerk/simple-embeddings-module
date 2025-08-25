@@ -1,10 +1,8 @@
 """
 Sentence Transformers Embedding Provider
-
 Implements embedding provider using the sentence-transformers library.
 Supports a wide range of pre-trained models with automatic device detection.
 """
-
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -18,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 class SentenceTransformersProvider(EmbeddingProviderBase):
     """Embedding provider using sentence-transformers library"""
-
     CONFIG_PARAMETERS = [
         ConfigParameter(
             key_name="model",
@@ -55,59 +52,77 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
             value_type="bool",
             config_description="Whether to trust remote code in models",
             required=False,
-            value_opt_default=False,
+            value_opt_default=True,
         ),
     ]
-
     CAPABILITIES = {
         "supports_batch": True,
         "supports_fp16": True,
         "cross_platform": True,
         "requires_internet": True,  # For downloading models
     }
-
     def __init__(self, **config):
         """Initialize sentence-transformers provider"""
         super().__init__(**config)
-
         self.model_name = config.get("model", "all-MiniLM-L6-v2")
         self.device_preference = config.get("device", "auto")
         self.batch_size = config.get("batch_size", 32)
         self.normalize_embeddings = config.get("normalize_embeddings", True)
-        self.trust_remote_code = config.get("trust_remote_code", False)
-
+        self.trust_remote_code = config.get("trust_remote_code", True)
         # Initialize model
         self._model = None
         self._device = None
         self._embedding_dim = None
         self._max_seq_length = None
-
         self._initialize_model()
-
     def _initialize_model(self):
         """Initialize the sentence-transformers model"""
         try:
             from sentence_transformers import SentenceTransformer
-        except ImportError:
+        except ImportError as exc:
             raise EmbeddingProviderError(
                 "sentence-transformers library not installed. "
                 "Install with: pip install sentence-transformers"
-            )
-
+            ) from exc
         # Determine device
         self._device = self._get_device()
-
         try:
-            logger.info(f"Loading sentence-transformers model: {self.model_name}")
-            self._model = SentenceTransformer(
-                self.model_name,
-                device=str(self._device),
-                trust_remote_code=self.trust_remote_code,
-            )
-
+            logger.info("Loading sentence-transformers model: %s", self.model_name)
+            # Special handling for models that require device_map="auto" or have MPS issues
+            problematic_models = [
+                "Salesforce/SFR-Embedding-Code-2B_R",
+                # Add other problematic models here
+            ]
+            if self.model_name in problematic_models:
+                logger.warning("Model %s has known MPS compatibility issues", self.model_name)
+                logger.info("Forcing CPU loading for compatibility")
+                try:
+                    # Force CPU loading for problematic models
+                    import os
+                    os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable CUDA
+                    self._model = SentenceTransformer(
+                        self.model_name,
+                        device="cpu",
+                        trust_remote_code=self.trust_remote_code,
+                    )
+                    self._device = "cpu"  # Override device setting
+                    logger.info("Successfully loaded %s on CPU", self.model_name)
+                except Exception as e:  # noqa: F841 - Exception caught for logging but not used in raise
+                    logger.error("Failed to load %s even on CPU: %s", self.model_name, e)
+                    raise EmbeddingProviderError(
+                        f"Model {self.model_name} is incompatible with this system. "
+                        "Consider using alternative models like 'jinaai/jina-embeddings-v2-base-code' "
+                        "or 'microsoft/codebert-base' for code embeddings."
+                    ) from e
+            else:
+                # Standard loading for normal models
+                self._model = SentenceTransformer(
+                    self.model_name,
+                    device=str(self._device),
+                    trust_remote_code=self.trust_remote_code,
+                )
             # Get model capabilities
             self._embedding_dim = self._model.get_sentence_embedding_dimension()
-
             # Get max sequence length (try different methods)
             try:
                 self._max_seq_length = self._model.get_max_seq_length()
@@ -118,39 +133,27 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
                 except Exception:
                     # Default fallback
                     self._max_seq_length = 512
-
-            logger.info(f"Model loaded: {self.model_name}")
-            logger.info(f"  Device: {self._device}")
-            logger.info(f"  Embedding dimension: {self._embedding_dim}")
-            logger.info(f"  Max sequence length: {self._max_seq_length}")
-
+            logger.info("Model loaded: %s", self.model_name)
+            logger.info("  Device: %s", self._device)
+            logger.info("  Embedding dimension: %s", self._embedding_dim)
+            logger.info("  Max sequence length: %s", self._max_seq_length)
         except Exception as e:
-            raise EmbeddingProviderError(
-                f"Failed to load model '{self.model_name}': {e}"
-            )
-
+            raise EmbeddingProviderError("Failed to load model '%s': %s" % (self.model_name, e)) from e
     def _get_device(self) -> torch.device:
         """Get the appropriate device for computation"""
         if self.device_preference == "auto":
             # Auto-detect best available device
             if torch.cuda.is_available():
                 return torch.device("cuda")
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 return torch.device("mps")
-            else:
-                return torch.device("cpu")
-        else:
-            return torch.device(self.device_preference)
-
-    def embed_documents(
-        self, documents: List[str], device: Optional[torch.device] = None
-    ) -> torch.Tensor:
+            return torch.device("cpu")
+        return torch.device(self.device_preference)
+    def embed_documents(self, documents: List[str], device: Optional[torch.device] = None) -> torch.Tensor:
         """Generate embeddings for documents"""
         if not documents:
             raise ValueError("Documents list cannot be empty")
-
         self.validate_inputs(documents)
-
         try:
             # Generate embeddings
             embeddings = self._model.encode(
@@ -160,23 +163,16 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
                 convert_to_tensor=True,
                 normalize_embeddings=self.normalize_embeddings,
             )
-
             # Move to target device if specified
             if device is not None and device != embeddings.device:
                 embeddings = embeddings.to(device)
-
             return embeddings
-
         except Exception as e:
-            raise EmbeddingProviderError(f"Failed to generate embeddings: {e}")
-
-    def embed_query(
-        self, query: str, device: Optional[torch.device] = None
-    ) -> torch.Tensor:
+            raise EmbeddingProviderError("Failed to generate embeddings: %s" % e) from e
+    def embed_query(self, query: str, device: Optional[torch.device] = None) -> torch.Tensor:
         """Generate embedding for a single query"""
         if not query.strip():
             raise ValueError("Query cannot be empty")
-
         try:
             # Generate embedding
             embedding = self._model.encode(
@@ -186,35 +182,27 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
                 convert_to_tensor=True,
                 normalize_embeddings=self.normalize_embeddings,
             )
-
             # Return as 1D tensor
             embedding = embedding.squeeze(0)
-
             # Move to target device if specified
             if device is not None and device != embedding.device:
                 embedding = embedding.to(device)
-
             return embedding
-
         except Exception as e:
-            raise EmbeddingProviderError(f"Failed to generate query embedding: {e}")
-
+            raise EmbeddingProviderError("Failed to generate query embedding: %s" % e) from e
     def get_embedding_dimension(self) -> int:
         """Get embedding dimension"""
         if self._embedding_dim is None:
             raise EmbeddingProviderError("Model not initialized")
         return self._embedding_dim
-
     def get_max_sequence_length(self) -> int:
         """Get maximum sequence length"""
         if self._max_seq_length is None:
             raise EmbeddingProviderError("Model not initialized")
         return self._max_seq_length
-
     def get_capabilities(self) -> Dict[str, Any]:
         """Get provider capabilities"""
         base_capabilities = super().get_capabilities()
-
         # Update with sentence-transformers specific info
         base_capabilities.update(
             {
@@ -226,14 +214,11 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
                 "memory_requirements_gb": self._estimate_memory_requirements(),
             }
         )
-
         return base_capabilities
-
     def _estimate_memory_requirements(self) -> float:
         """Estimate memory requirements in GB"""
         if not self._model:
             return 2.0  # Default estimate
-
         try:
             # Rough estimate based on model parameters
             param_count = sum(p.numel() for p in self._model.parameters())
@@ -242,25 +227,20 @@ class SentenceTransformersProvider(EmbeddingProviderBase):
             return memory_bytes / (1024**3)  # Convert to GB
         except Exception:
             return 2.0  # Fallback estimate
-
     def validate_inputs(self, texts: List[str]) -> None:
         """Validate input texts"""
         super().validate_inputs(texts)
-
         # Additional sentence-transformers specific validation
         for i, text in enumerate(texts):
             if len(text.strip()) == 0:
-                raise ValueError(f"Document {i} is empty or whitespace only")
-
+                raise ValueError("Document %s is empty or whitespace only" % i)
     def __repr__(self) -> str:
         return (
-            "SentenceTransformersProvider("
+            f"SentenceTransformersProvider("
             f"model={self.model_name}, "
             f"device={self._device}, "
             f"dim={self._embedding_dim})"
         )
-
-
 # Register common model configurations
 COMMON_MODELS = {
     "all-MiniLM-L6-v2": {

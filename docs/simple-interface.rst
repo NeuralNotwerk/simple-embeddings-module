@@ -24,10 +24,10 @@ Python Simple Interfaces
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    # Create with defaults
    sem = SEMSimple()
-   
+
    # Or customize
    sem = SEMSimple(
        index_name="my_custom_index",
@@ -39,10 +39,10 @@ Python Simple Interfaces
 .. code-block:: python
 
    from simple_embeddings_module import simple_aws
-   
+
    # Create with auto-generated bucket
    sem = simple_aws()
-   
+
    # Or customize
    sem = simple_aws(
        bucket_name="my-semantic-search",
@@ -57,8 +57,8 @@ CLI Simple Interface
 
    # Local operations
    sem-cli simple local <operation> [options]
-   
-   # AWS operations  
+
+   # AWS operations
    sem-cli simple aws <operation> [options]
 
 Standardized Naming
@@ -92,7 +92,7 @@ The Simple Interface automatically detects existing indexes:
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    sem = SEMSimple()
    # Output: 📝 Ready to add documents! Use .add_text('your content') to start
 
@@ -101,7 +101,7 @@ The Simple Interface automatically detects existing indexes:
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    sem = SEMSimple()
    # Output: 📚 Found existing semantic search index with 42 documents
    #         🔍 Ready to search! Use .search('your query') to find documents
@@ -127,17 +127,17 @@ Basic Usage
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    # Create instance
    sem = SEMSimple()
-   
+
    # Add documents
    sem.add_text("Machine learning is transforming software development.")
    sem.add_text("Python is excellent for data science applications.")
-   
+
    # Search semantically
    results = sem.search("AI and programming")
-   
+
    # Process results
    for result in results:
        print(f"Score: {result['similarity_score']:.3f}")
@@ -153,18 +153,18 @@ Advanced Usage
        index_name="project_docs",
        storage_path="./project_indexes"
    )
-   
+
    # Batch operations
    documents = [
        "Document 1 content...",
-       "Document 2 content...", 
+       "Document 2 content...",
        "Document 3 content..."
    ]
-   
+
    # Add multiple documents
    for i, doc in enumerate(documents):
        sem.add_text(doc, doc_id=f"doc_{i}")
-   
+
    # Advanced search
    results = sem.search(
        "your query",
@@ -192,16 +192,16 @@ Basic Usage
 .. code-block:: python
 
    from simple_embeddings_module import simple_aws
-   
+
    # Create instance (auto-generates bucket)
    sem = simple_aws()
-   
+
    # Add documents
    doc_id = sem.add_text("Cloud-based machine learning deployment strategies.")
-   
+
    # Search
    results = sem.search("ML deployment in cloud environments")
-   
+
    # Get information
    info = sem.get_info()
    print(f"Bucket: {info['s3_bucket']}")
@@ -218,17 +218,17 @@ Advanced Usage
        region="us-west-2",
        embedding_model="amazon.titan-embed-text-v1"
    )
-   
+
    # Batch operations with metadata
    documents = [
        ("Technical documentation for API v2.0", "api_docs_v2"),
        ("User guide for new features", "user_guide_2024"),
        ("Troubleshooting common issues", "troubleshooting")
    ]
-   
+
    for content, doc_id in documents:
        sem.add_text(content, document_id=doc_id)
-   
+
    # Search with custom parameters
    results = sem.search(
        "API documentation",
@@ -276,7 +276,7 @@ CLI Configuration
 
    # Local options
    sem-cli simple local index --index my_docs --path ./my_storage
-   
+
    # AWS options
    sem-cli simple aws index --bucket my-bucket --region us-west-2 --model amazon.titan-embed-text-v1
 
@@ -290,15 +290,15 @@ Documentation Search
 
    from simple_embeddings_module import SEMSimple
    from pathlib import Path
-   
+
    # Create documentation search
    sem = SEMSimple(index_name="docs", storage_path="./doc_indexes")
-   
+
    # Index all markdown files
    for md_file in Path("./docs").glob("**/*.md"):
        content = md_file.read_text()
        sem.add_text(content, doc_id=md_file.name)
-   
+
    # Search documentation
    results = sem.search("installation instructions")
 
@@ -309,15 +309,15 @@ Code Search
 
    from simple_embeddings_module import simple_aws
    from pathlib import Path
-   
+
    # Create cloud-based code search
    sem = simple_aws(bucket_name="company-code-search")
-   
+
    # Index Python files
    for py_file in Path("./src").glob("**/*.py"):
        content = py_file.read_text()
        sem.add_text(content, document_id=str(py_file))
-   
+
    # Find code by functionality
    results = sem.search("database connection handling")
 
@@ -327,20 +327,20 @@ Research Paper Management
 .. code-block:: python
 
    from simple_embeddings_module import simple_aws
-   
+
    # Create research paper index
    sem = simple_aws(bucket_name="research-papers-index")
-   
+
    # Index paper abstracts
    papers = [
        ("Neural networks for natural language processing", "paper_001"),
        ("Deep learning approaches to computer vision", "paper_002"),
        ("Transformer architectures and attention mechanisms", "paper_003")
    ]
-   
+
    for abstract, paper_id in papers:
        sem.add_text(abstract, document_id=paper_id)
-   
+
    # Find relevant papers
    results = sem.search("attention mechanisms in NLP")
 
@@ -354,11 +354,11 @@ You can easily migrate data between local and AWS backends:
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple, simple_aws
-   
+
    # Load from local
    local_sem = SEMSimple()
    local_results = local_sem.search("", top_k=1000)  # Get all documents
-   
+
    # Save to AWS
    aws_sem = simple_aws(bucket_name="migrated-data")
    for result in local_results:
@@ -369,11 +369,11 @@ You can easily migrate data between local and AWS backends:
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple, simple_aws
-   
+
    # Load from AWS
    aws_sem = simple_aws(bucket_name="source-data")
    aws_results = aws_sem.search("", top_k=1000)  # Get all documents
-   
+
    # Save to local
    local_sem = SEMSimple(storage_path="./migrated_indexes")
    for result in aws_results:

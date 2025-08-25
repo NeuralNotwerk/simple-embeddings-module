@@ -35,18 +35,17 @@ dependencies = [
     "orjson>=3.8.0",
     "requests>=2.25.0",
     "sentence-transformers>=2.2.0",
+    "click>=8.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "black>=23.0.0",
     "flake8>=6.0.0",
     "mypy>=1.0.0",
 ]
 all = [
     "pytest>=7.0.0",
-    "black>=23.0.0",
     "flake8>=6.0.0",
     "mypy>=1.0.0",
 ]
@@ -57,31 +56,13 @@ Homepage = "https://github.com/NeuralNotwerk/simple-embeddings-module"
 "Source" = "https://github.com/NeuralNotwerk/simple-embeddings-module"
 
 [project.scripts]
-sem-cli = "simple_embeddings_module.sem_cli:main"
+sem-cli = "simple_embeddings_module.sem_cli_click:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
-
-[tool.black]
-line-length = 88
-target-version = ['py39']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
 
 [tool.mypy]
 python_version = "3.9"

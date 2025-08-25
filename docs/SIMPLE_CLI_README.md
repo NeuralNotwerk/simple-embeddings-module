@@ -6,7 +6,7 @@ The `sem-cli simple` command provides easy access to the simple constructs direc
 
 The simple CLI interface maps directly to the simple Python modules (`SEMSimple` and `simple_aws`) and provides three main operations:
 - **`index`** - Index text from stdin or arguments
-- **`indexfiles`** - Index files from paths (stdin or arguments)  
+- **`indexfiles`** - Index files from paths (stdin or arguments)
 - **`search`** - Search the semantic index
 
 ## Command Structure
@@ -163,7 +163,7 @@ name: Index Documentation
 run: |
   # Index updated documentation
   git diff --name-only HEAD~1 HEAD | grep '\.md$' | sem-cli simple aws indexfiles --bucket ci-docs
-  
+
   # Verify search works
   sem-cli simple aws search --bucket ci-docs --query "getting started" --top-k 1
 ```
@@ -187,7 +187,7 @@ sem-cli simple local search --index data_descriptions --query "user behavior ana
 - **Search Speed**: ~0.1-0.5 seconds for typical queries
 - **Storage**: Compressed JSON files in local directory
 
-### AWS Backend  
+### AWS Backend
 - **Setup Time**: ~1-2 seconds for AWS service initialization
 - **Indexing Speed**: ~3-5 docs/second (limited by Bedrock API)
 - **Search Speed**: ~0.3-0.8 seconds including S3 retrieval

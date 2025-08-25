@@ -1,268 +1,393 @@
+#!/usr/bin/env python3
 """
-AWS Bedrock Embeddings Provider
+AWS Bedrock embedding provider for Simple Embeddings Module.
 
-Provides access to AWS Bedrock embedding models including:
-- Amazon Titan Text Embeddings
-- Cohere Embed models
-- Anthropic Claude embeddings (when available)
+This module provides dynamic model capability detection and supports
+all Bedrock embedding models with automatic dimension discovery.
 """
 
 import json
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import boto3
 import torch
+from botocore.exceptions import ClientError
 
-from ..sem_module_reg import ConfigParameter
 from .mod_embeddings_base import EmbeddingProviderBase, EmbeddingProviderError
 
 logger = logging.getLogger(__name__)
 
+@dataclass
+class BedrockModelInfo:
+    """Information about a Bedrock embedding model."""
+    model_id: str
+    embedding_dimensions: int
+    max_input_tokens: int
+    max_batch_size: int
+    provider: str
+    model_name: str
 
 class BedrockEmbeddingProvider(EmbeddingProviderBase):
-    """AWS Bedrock embeddings provider with multiple model support"""
+    """
+    AWS Bedrock embedding provider with dynamic model capability detection.
 
-    CONFIG_PARAMETERS = [
-        ConfigParameter(
-            key_name="model_id",
-            value_type="str",
-            config_description="Bedrock model ID (e.g., amazon.titan-embed-text-v1)",
-            required=False,
-            value_opt_default="amazon.titan-embed-text-v1",
-        ),
-        ConfigParameter(
-            key_name="region",
-            value_type="str",
-            config_description="AWS region for Bedrock service",
-            required=False,
-            value_opt_default="us-east-1",
-        ),
-        ConfigParameter(
-            key_name="aws_access_key_id",
-            value_type="str",
-            config_description="AWS access key ID (or use AWS credentials)",
-            required=False,
-            value_opt_default=None,
-        ),
-        ConfigParameter(
-            key_name="aws_secret_access_key",
-            value_type="str",
-            config_description="AWS secret access key (or use AWS credentials)",
-            required=False,
-            value_opt_default=None,
-        ),
-        ConfigParameter(
-            key_name="aws_session_token",
-            value_type="str",
-            config_description="AWS session token (for temporary credentials)",
-            required=False,
-            value_opt_default=None,
-        ),
-        ConfigParameter(
-            key_name="profile_name",
-            value_type="str",
-            config_description="AWS profile name from ~/.aws/credentials",
-            required=False,
-            value_opt_default=None,
-        ),
-        ConfigParameter(
-            key_name="batch_size",
-            value_type="numeric",
-            config_description="Number of texts to process in one batch",
-            required=False,
-            value_opt_default=25,  # Conservative for Bedrock
-            value_opt_regex=r"^[1-9][0-9]*$",
-        ),
-        ConfigParameter(
-            key_name="max_retries",
-            value_type="numeric",
-            config_description="Maximum number of retry attempts",
-            required=False,
-            value_opt_default=3,
-            value_opt_regex=r"^[0-9]$",
-        ),
-        ConfigParameter(
-            key_name="timeout",
-            value_type="numeric",
-            config_description="Request timeout in seconds",
-            required=False,
-            value_opt_default=60,
-            value_opt_regex=r"^[1-9][0-9]*$",
-        ),
-    ]
+    Supports all Bedrock embedding models:
+    - Amazon Titan Text Embeddings v1/v2
+    - Cohere Embed models
+    - Future embedding models automatically
+    """
 
-    CAPABILITIES = {
-        "embedding_dimension": None,  # Set based on model
-        "max_sequence_length": None,  # Set based on model
-        "supports_batching": True,
-        "requires_aws_credentials": True,
-        "supports_multiple_models": True,
-        "tokenizer_type": "bedrock",
+    # Known model configurations (fallback if API detection fails)
+    KNOWN_MODELS = {
+        "amazon.titan-embed-text-v1": BedrockModelInfo(
+            model_id="amazon.titan-embed-text-v1",
+            embedding_dimensions=1536,
+            max_input_tokens=8000,
+            max_batch_size=25,
+            provider="amazon",
+            model_name="Titan Text Embeddings v1"
+        ),
+        "amazon.titan-embed-text-v2:0": BedrockModelInfo(
+            model_id="amazon.titan-embed-text-v2:0",
+            embedding_dimensions=1024,
+            max_input_tokens=8192,
+            max_batch_size=25,
+            provider="amazon",
+            model_name="Titan Text Embeddings v2"
+        ),
+        "cohere.embed-english-v3": BedrockModelInfo(
+            model_id="cohere.embed-english-v3",
+            embedding_dimensions=1024,
+            max_input_tokens=512,
+            max_batch_size=96,
+            provider="cohere",
+            model_name="Cohere Embed English v3"
+        ),
+        "cohere.embed-multilingual-v3": BedrockModelInfo(
+            model_id="cohere.embed-multilingual-v3",
+            embedding_dimensions=1024,
+            max_input_tokens=512,
+            max_batch_size=96,
+            provider="cohere",
+            model_name="Cohere Embed Multilingual v3"
+        )
     }
 
-    def __init__(self, **config):
-        """Initialize Bedrock embedding provider"""
+    def __init__(self,
+                 model_id: str = "amazon.titan-embed-text-v2:0",
+                 region: str = "us-east-1",
+                 aws_profile: Optional[str] = None,
+                 max_retries: int = 3,
+                 **config):
+        """
+        Initialize Bedrock embedding provider with dynamic model detection.
+
+        Args:
+            model_id: Bedrock model identifier
+            region: AWS region for Bedrock service
+            aws_profile: AWS profile name (optional)
+            max_retries: Maximum retry attempts for API calls
+            **config: Additional configuration parameters
+        """
         super().__init__(**config)
 
-        self.model_id = config.get("model_id", "amazon.titan-embed-text-v1")
-        self.region = config.get("region", "us-east-1")
-        self.batch_size = config.get("batch_size", 25)
-        self.max_retries = config.get("max_retries", 3)
-        self.timeout = config.get("timeout", 60)
+        self.model_id = model_id
+        self.region = region
+        self.aws_profile = aws_profile
+        self.max_retries = max_retries
 
-        # AWS credentials
-        self.aws_access_key_id = config.get("aws_access_key_id")
-        self.aws_secret_access_key = config.get("aws_secret_access_key")
-        self.aws_session_token = config.get("aws_session_token")
-        self.profile_name = config.get("profile_name")
-
-        # Initialize Bedrock client
-        self._init_client()
-
-        # Set model-specific capabilities
-        self._set_model_capabilities()
-
-        logger.info(f"Bedrock embedding provider initialized: {self.model_id}")
-
-    def _init_client(self):
-        """Initialize AWS Bedrock client"""
+        # Initialize AWS clients
         try:
-            import boto3
-            from botocore.config import Config
-        except ImportError:
-            raise EmbeddingProviderError(
-                "boto3 library not installed. Install with: pip install boto3"
-            )
+            session = boto3.Session(profile_name=aws_profile) if aws_profile else boto3.Session()
+            self.bedrock_client = session.client('bedrock', region_name=region)
+            self.bedrock_runtime = session.client('bedrock-runtime', region_name=region)
+        except Exception as e:
+            raise EmbeddingProviderError("Failed to initialize AWS clients: %s" % e) from e
 
+        # Detect model capabilities
+        self.model_info = self._detect_model_capabilities()
+
+        # Set base class attributes
+        self.model_name = self.model_info.model_name
+        self.preferred_batch_size = min(self.model_info.max_batch_size, 32)
+        self.device_preferences = ["cpu"]  # Bedrock is cloud-based
+        self.memory_requirements_gb = 0.1  # Minimal local memory
+        self.supports_fp16 = False  # Cloud service handles precision
+
+        logger.info("Initialized Bedrock provider: %s", self.model_info.model_name)
+        logger.info("  • Model ID: %s", self.model_info.model_id)
+        logger.info("  • Dimensions: %s", self.model_info.embedding_dimensions)
+        logger.info("  • Max tokens: %s", self.model_info.max_input_tokens)
+        logger.info("  • Provider: %s", self.model_info.provider)
+
+    def _detect_model_capabilities(self) -> BedrockModelInfo:
+        """
+        Dynamically detect model capabilities from Bedrock API.
+
+        Returns:
+            BedrockModelInfo with detected or fallback capabilities
+        """
         try:
-            # Configure boto3 client
-            config = Config(
-                region_name=self.region,
-                retries={"max_attempts": self.max_retries, "mode": "adaptive"},
-                read_timeout=self.timeout,
-            )
+            # First, try to get model info from Bedrock API
+            logger.info("Detecting capabilities for model: %s", self.model_id)
 
-            # Create session with credentials
-            if self.profile_name:
-                session = boto3.Session(profile_name=self.profile_name)
-                self.client = session.client("bedrock-runtime", config=config)
-            elif self.aws_access_key_id and self.aws_secret_access_key:
-                self.client = boto3.client(
-                    "bedrock-runtime",
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                    aws_session_token=self.aws_session_token,
-                    config=config,
-                )
-            else:
-                # Use default credentials (IAM role, env vars, etc.)
-                self.client = boto3.client("bedrock-runtime", config=config)
+            # Method 1: Try to get model details from foundation models API
+            model_info = self._get_model_info_from_api()
+            if model_info:
+                return model_info
 
-            logger.info(f"Bedrock client initialized for region: {self.region}")
+            # Method 2: Try dynamic detection via test embedding
+            model_info = self._detect_via_test_embedding()
+            if model_info:
+                return model_info
+
+            # Method 3: Fall back to known model configurations
+            if self.model_id in self.KNOWN_MODELS:
+                logger.info("Using known configuration for %s", self.model_id)
+                return self.KNOWN_MODELS[self.model_id]
+
+            # Method 4: Last resort - try to infer from model ID
+            return self._infer_from_model_id()
 
         except Exception as e:
-            raise EmbeddingProviderError(f"Failed to initialize Bedrock client: {e}")
+            logger.warning("Model capability detection failed: %s", e)
+            logger.info("Falling back to default Titan v2 configuration")
 
-    def _set_model_capabilities(self):
-        """Set capabilities based on the selected model"""
-        model_specs = {
-            "amazon.titan-embed-text-v1": {
-                "embedding_dimension": 1536,
-                "max_sequence_length": 8000,
-                "input_format": "titan",
-            },
-            "amazon.titan-embed-text-v2:0": {
-                "embedding_dimension": 1024,
-                "max_sequence_length": 8000,
-                "input_format": "titan_v2",
-            },
-            "cohere.embed-english-v3": {
-                "embedding_dimension": 1024,
-                "max_sequence_length": 512,
-                "input_format": "cohere",
-            },
-            "cohere.embed-multilingual-v3": {
-                "embedding_dimension": 1024,
-                "max_sequence_length": 512,
-                "input_format": "cohere",
-            },
-        }
+            # Ultimate fallback
+            return BedrockModelInfo(
+                model_id=self.model_id,
+                embedding_dimensions=1024,
+                max_input_tokens=8192,
+                max_batch_size=25,
+                provider="unknown",
+                model_name=f"Unknown Model ({self.model_id})"
+            )
 
-        if self.model_id not in model_specs:
-            logger.warning(f"Unknown model {self.model_id}, using default capabilities")
-            specs = {
-                "embedding_dimension": 1536,
-                "max_sequence_length": 8000,
-                "input_format": "titan",
-            }
+    def _get_model_info_from_api(self) -> Optional[BedrockModelInfo]:
+        """Try to get model information from Bedrock foundation models API."""
+        try:
+            # List available foundation models
+            response = self.bedrock_client.list_foundation_models()
+
+            for model in response.get('modelSummaries', []):
+                if model['modelId'] == self.model_id:
+                    # Extract model information
+                    model_name = model.get('modelName', 'Unknown')
+                    provider = model.get('providerName', 'unknown').lower()
+
+                    # Get detailed model info if available
+                    try:
+                        detail_response = self.bedrock_client.get_foundation_model(
+                            modelIdentifier=self.model_id
+                        )
+                        model_details = detail_response.get('modelDetails', {})
+
+                        # Extract capabilities from model details
+                        input_modalities = model_details.get('inputModalities', [])
+                        output_modalities = model_details.get('outputModalities', [])
+
+                        if 'TEXT' in input_modalities and 'EMBEDDING' in output_modalities:
+                            # This is an embedding model - use fallback detection
+                            # Note: API doesn't currently expose embedding dimensions directly
+                            logger.info("Found embedding model via API: %s", self.model_id)
+                            return BedrockModelInfo(
+                                model_id=self.model_id,
+                                embedding_dimensions=self._estimate_dimensions(provider),
+                                max_input_tokens=self._extract_max_tokens(model_details),
+                                    max_batch_size=self._extract_batch_size(provider),
+                                    provider=provider,
+                                    model_name=model_name
+                                )
+
+                    except ClientError as e:
+                        logger.debug("Could not get detailed model info: %s", e)
+
+            return None
+
+        except Exception as e:
+            logger.debug("API model detection failed: %s", e)
+            return None
+
+    def _detect_via_test_embedding(self) -> Optional[BedrockModelInfo]:
+        """Detect model capabilities by making a test embedding call."""
+        try:
+            logger.info("Attempting dynamic detection via test embedding...")
+
+            # Make a test embedding call with minimal text
+            test_text = "test"
+            body = self._prepare_request_body(test_text)
+
+            response = self.bedrock_runtime.invoke_model(
+                modelId=self.model_id,
+                contentType="application/json",
+                body=body
+            )
+
+            # Parse response to get embedding dimensions
+            response_body = json.loads(response['body'].read())
+            embedding = self._extract_embedding_from_response(response_body)
+
+            if embedding:
+                dimensions = len(embedding)
+                provider = self._infer_provider_from_model_id()
+
+                logger.info("Dynamically detected %s dimensions via test embedding", dimensions)
+
+                return BedrockModelInfo(
+                    model_id=self.model_id,
+                    embedding_dimensions=dimensions,
+                    max_input_tokens=self._estimate_max_tokens(provider),
+                    max_batch_size=self._estimate_batch_size(provider),
+                    provider=provider,
+                    model_name=f"Detected Model ({self.model_id})"
+                )
+
+            return None
+
+        except Exception as e:
+            logger.debug("Test embedding detection failed: %s", e)
+            return None
+
+    def _infer_from_model_id(self) -> BedrockModelInfo:
+        """Infer model capabilities from model ID patterns."""
+        provider = self._infer_provider_from_model_id()
+
+        # Make educated guesses based on model ID patterns
+        if "titan-embed-text-v2" in self.model_id:
+            dimensions = 1024
+            max_tokens = 8192
+        elif "titan-embed-text-v1" in self.model_id:
+            dimensions = 1536
+            max_tokens = 8000
+        elif "cohere.embed" in self.model_id:
+            dimensions = 1024
+            max_tokens = 512
         else:
-            specs = model_specs[self.model_id]
+            # Conservative defaults
+            dimensions = 1024
+            max_tokens = 4096
 
-        self.CAPABILITIES["embedding_dimension"] = specs["embedding_dimension"]
-        self.CAPABILITIES["max_sequence_length"] = specs["max_sequence_length"]
-        self._input_format = specs["input_format"]
+        logger.info("Inferred capabilities from model ID: %s dimensions", dimensions)
 
-        logger.info(
-            f"Model capabilities set: {specs['embedding_dimension']} dimensions, "
-            f"{specs['max_sequence_length']} max tokens"
+        return BedrockModelInfo(
+            model_id=self.model_id,
+            embedding_dimensions=dimensions,
+            max_input_tokens=max_tokens,
+            max_batch_size=self._estimate_batch_size(provider),
+            provider=provider,
+            model_name=f"Inferred Model ({self.model_id})"
         )
 
-    def embed_documents(
-        self, texts: List[str], device: Optional[torch.device] = None
-    ) -> torch.Tensor:
-        """Generate embeddings for multiple documents"""
-        if not texts:
-            raise ValueError("No texts provided for embedding")
+    def _prepare_request_body(self, text: str) -> str:
+        """Prepare request body based on model provider."""
+        provider = self._infer_provider_from_model_id()
 
-        logger.info(f"Generating embeddings for {len(texts)} documents")
-        start_time = time.time()
+        if provider == "amazon":
+            # Titan models
+            return json.dumps({"inputText": text})
+        if provider == "cohere":
+            # Cohere models
+            return json.dumps({
+                "texts": [text],
+                "input_type": "search_document"
+            })
+        # Default to Titan format
+        return json.dumps({"inputText": text})
 
-        all_embeddings = []
+    def _extract_embedding_from_response(self, response_body: Dict[str, Any]) -> Optional[List[float]]:
+        """Extract embedding vector from response based on model provider."""
+        try:
+            # Titan format
+            if "embedding" in response_body:
+                return response_body["embedding"]
 
-        # Process in batches
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i : i + self.batch_size]
+            # Cohere format
+            if "embeddings" in response_body and len(response_body["embeddings"]) > 0:
+                return response_body["embeddings"][0]
 
-            if self._supports_batch_processing():
-                # Use batch processing if supported
-                batch_embeddings = self._embed_batch(batch)
-            else:
-                # Process individually
-                batch_embeddings = []
-                for text in batch:
-                    embedding = self._embed_single(text)
-                    batch_embeddings.append(embedding)
+            return None
 
-            all_embeddings.extend(batch_embeddings)
+        except Exception as e:
+            logger.debug("Could not extract embedding from response: %s", e)
+            return None
 
-            # Small delay between batches
-            if i + self.batch_size < len(texts):
-                time.sleep(0.1)
+    def _infer_provider_from_model_id(self) -> str:
+        """Infer provider from model ID."""
+        if self.model_id.startswith("amazon."):
+            return "amazon"
+        if self.model_id.startswith("cohere."):
+            return "cohere"
+        if self.model_id.startswith("anthropic."):
+            return "anthropic"
+        return "unknown"
 
-        # Convert to tensor
-        embeddings_tensor = torch.tensor(all_embeddings, dtype=torch.float32)
+    def _extract_dimensions_from_details(self, _model_details: Dict[str, Any]) -> Optional[int]:
+        """Try to extract embedding dimensions from model details."""
+        # This would need to be implemented based on actual API response structure
+        # Currently, Bedrock API doesn't expose embedding dimensions directly
+        return None
 
-        # Move to specified device
+    def _extract_max_tokens(self, _model_details: Dict[str, Any]) -> int:
+        """Extract maximum token limit from model details."""
+        # Try to find token limits in model details
+        # Fallback to provider-based estimates
+        provider = self._infer_provider_from_model_id()
+        return self._estimate_max_tokens(provider)
+
+    def _estimate_dimensions(self, provider: str) -> int:
+        """Estimate embedding dimensions based on provider and model."""
+        if provider == "amazon":
+            if "v2" in self.model_id:
+                return 1024  # Titan v2 models
+            return 1536  # Titan v1 models
+        if provider == "cohere":
+            return 1024  # Cohere embed models
+        return 1536  # Default fallback
+
+    def _estimate_max_tokens(self, provider: str) -> int:
+        """Estimate maximum tokens based on provider."""
+        if provider == "amazon":
+            return 8192 if "v2" in self.model_id else 8000
+        if provider == "cohere":
+            return 512
+        return 4096
+
+    def _extract_batch_size(self, provider: str) -> int:
+        """Extract or estimate batch size based on provider."""
+        return self._estimate_batch_size(provider)
+
+    def _estimate_batch_size(self, provider: str) -> int:
+        """Estimate batch size based on provider."""
+        if provider == "amazon":
+            return 25
+        if provider == "cohere":
+            return 96
+        return 10
+
+    # EmbeddingProviderBase implementation
+
+    def embed_documents(self, documents: List[str], device: Optional[torch.device] = None) -> torch.Tensor:
+        """Generate embeddings for multiple documents."""
+        if not documents:
+            raise ValueError("No documents provided for embedding")
+
+        embeddings = self.embed_batch(documents)
+        embeddings_tensor = torch.tensor(embeddings, dtype=torch.float32)
+
         if device is not None:
             embeddings_tensor = embeddings_tensor.to(device)
 
-        elapsed = time.time() - start_time
-        logger.info(
-            f"Generated {len(texts)} embeddings in {elapsed:.2f}s "
-            f"({len(texts)/elapsed:.1f} docs/sec)"
-        )
-
         return embeddings_tensor
 
-    def embed_query(
-        self, query: str, device: Optional[torch.device] = None
-    ) -> torch.Tensor:
-        """Generate embedding for a single query"""
+    def embed_query(self, query: str, device: Optional[torch.device] = None) -> torch.Tensor:
+        """Generate embedding for a single query."""
         if not query.strip():
             raise ValueError("Query cannot be empty")
 
-        embedding = self._embed_single(query)
+        embedding = self.embed_single(query)
         embedding_tensor = torch.tensor(embedding, dtype=torch.float32)
 
         if device is not None:
@@ -270,123 +395,135 @@ class BedrockEmbeddingProvider(EmbeddingProviderBase):
 
         return embedding_tensor
 
-    def _supports_batch_processing(self) -> bool:
-        """Check if the model supports batch processing"""
-        # Currently, most Bedrock models process one text at a time
-        return False
+    def get_embedding_dimension(self) -> int:
+        """Get embedding dimension."""
+        return self.model_info.embedding_dimensions
 
-    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """Embed a batch of texts (for models that support it)"""
-        # This would be implemented for models that support batch processing
-        # For now, fall back to individual processing
-        return [self._embed_single(text) for text in texts]
+    def get_max_sequence_length(self) -> int:
+        """Get maximum sequence length."""
+        return self.model_info.max_input_tokens
 
-    def _embed_single(self, text: str) -> List[float]:
-        """Embed a single text with retry logic"""
-        for attempt in range(self.max_retries + 1):
+    # Bedrock-specific methods
+
+    def embed_single(self, text: str) -> List[float]:
+        """Generate embedding for a single text."""
+        if not text.strip():
+            raise ValueError("Text cannot be empty")
+
+        for attempt in range(self.max_retries):
             try:
-                # Prepare request body based on model format
+                # Prepare request
                 body = self._prepare_request_body(text)
 
-                # Make Bedrock API call
-                response = self.client.invoke_model(
+                # Make API call
+                response = self.bedrock_runtime.invoke_model(
                     modelId=self.model_id,
-                    contentType="application/json",
-                    accept="application/json",
-                    body=json.dumps(body),
+                    body=body,
+                    contentType='application/json',
+                    accept='application/json'
                 )
 
                 # Parse response
-                response_body = json.loads(response["body"].read())
-                embedding = self._extract_embedding(response_body)
+                response_body = json.loads(response['body'].read())
+                embedding = self._extract_embedding_from_response(response_body)
 
-                logger.debug(f"Successfully embedded text of length {len(text)}")
+                if embedding is None:
+                    raise EmbeddingProviderError("Could not extract embedding from response: %s" % response_body)
+
                 return embedding
 
-            except Exception as e:
-                if attempt < self.max_retries:
-                    wait_time = 2**attempt  # Exponential backoff
-                    logger.warning(
-                        f"Bedrock API error (attempt {attempt + 1}/{self.max_retries + 1}): {e}. "
-                        f"Retrying in {wait_time}s..."
-                    )
+            except ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+                if error_code == 'ThrottlingException' and attempt < self.max_retries - 1:
+                    wait_time = (2 ** attempt) * 0.1  # Exponential backoff
+                    logger.warning("Rate limited, retrying in %.1fs...", wait_time)
                     time.sleep(wait_time)
-                else:
-                    logger.error(
-                        f"Bedrock API failed after {self.max_retries + 1} attempts: {e}"
-                    )
-                    raise EmbeddingProviderError(f"Bedrock API error: {e}")
+                    continue
+                logger.error("Bedrock API error: %s", e)
+                raise
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    logger.warning("Embedding attempt %d failed: %s", attempt + 1, e)
+                    time.sleep(0.1)
+                    continue
+                logger.error("All embedding attempts failed: %s", e)
+                raise
 
-    def _prepare_request_body(self, text: str) -> Dict[str, Any]:
-        """Prepare request body based on model format"""
-        if self._input_format == "titan":
-            return {"inputText": text}
-        elif self._input_format == "titan_v2":
-            return {
-                "inputText": text,
-                "dimensions": self.CAPABILITIES["embedding_dimension"],
-            }
-        elif self._input_format == "cohere":
-            return {"texts": [text], "input_type": "search_document"}
-        else:
-            # Default to Titan format
-            return {"inputText": text}
+        raise RuntimeError("Failed to generate embedding after %s attempts" % self.max_retries)
 
-    def _extract_embedding(self, response_body: Dict[str, Any]) -> List[float]:
-        """Extract embedding from response based on model format"""
-        if self._input_format in ["titan", "titan_v2"]:
-            return response_body["embedding"]
-        elif self._input_format == "cohere":
-            return response_body["embeddings"][0]
-        else:
-            # Try common response formats
-            if "embedding" in response_body:
-                return response_body["embedding"]
-            elif "embeddings" in response_body:
-                return response_body["embeddings"][0]
-            else:
-                raise EmbeddingProviderError(
-                    f"Unknown response format: {response_body}"
-                )
+    def get_embedding_dim(self) -> int:
+        """Get embedding dimensions for this model."""
+        return self.model_info.embedding_dimensions
 
-    def get_embedding_dimension(self) -> int:
-        """Get the dimensionality of embeddings produced by this provider"""
-        return self.CAPABILITIES.get("embedding_dimension", 1536)
+    def get_max_tokens(self) -> int:
+        """Get maximum token limit for this model."""
+        return self.model_info.max_input_tokens
 
-    def get_max_sequence_length(self) -> int:
-        """Get the maximum sequence length supported by this provider"""
-        return self.CAPABILITIES.get("max_sequence_length", 8000)
+    def get_model_name(self) -> str:
+        """Get human-readable model name."""
+        return self.model_info.model_name
 
-    def get_capabilities(self) -> Dict[str, Any]:
-        """Return provider capabilities"""
-        capabilities = super().get_capabilities()
-        capabilities.update(
-            {
-                "model_id": self.model_id,
-                "aws_region": self.region,
-                "api_based": True,
-                "requires_internet": True,
-                "supports_batch_processing": self._supports_batch_processing(),
-            }
-        )
-        return capabilities
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple texts."""
+        if not texts:
+            return []
 
-    def estimate_tokens(self, text: str) -> int:
-        """Estimate token count for text (rough approximation)"""
-        # Rough approximation: ~4 characters per token
-        return len(text) // 4
+        embeddings = []
+        batch_size = self.model_info.max_batch_size
 
-    def validate_text_length(self, text: str) -> bool:
-        """Validate that text is within model limits"""
-        estimated_tokens = self.estimate_tokens(text)
-        max_tokens = self.CAPABILITIES.get("max_sequence_length", 8000)
-        return estimated_tokens <= max_tokens
+        # Process in batches to respect API limits
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            logger.debug("Processing batch %s: %s texts", i//batch_size + 1, len(batch))
 
-    def __repr__(self) -> str:
-        """String representation"""
-        return (
-            f"BedrockEmbeddingProvider("
-            f"model_id={self.model_id}, "
-            f"region={self.region}, "
-            f"dimensions={self.CAPABILITIES.get('embedding_dimension')})"
-        )
+            batch_embeddings = []
+            for text in batch:
+                embedding = self.embed_single(text)
+                batch_embeddings.append(embedding)
+
+                # Small delay to avoid rate limiting
+                time.sleep(0.02)
+
+            embeddings.extend(batch_embeddings)
+
+        return embeddings
+
+    def get_model_info(self) -> BedrockModelInfo:
+        """Get complete model information."""
+        return self.model_info
+
+    def list_available_models(self) -> List[str]:
+        """List all available Bedrock embedding models."""
+        try:
+            response = self.bedrock_client.list_foundation_models()
+
+            embedding_models = []
+            for model in response.get('modelSummaries', []):
+                # Check if this is an embedding model
+                input_modalities = model.get('inputModalities', [])
+                output_modalities = model.get('outputModalities', [])
+
+                if 'TEXT' in input_modalities and 'EMBEDDING' in output_modalities:
+                    embedding_models.append(model['modelId'])
+
+            return sorted(embedding_models)
+
+        except Exception as e:
+            logger.error("Could not list available models: %s", e)
+            return list(self.KNOWN_MODELS.keys())
+
+def create_bedrock_provider(model_id: str = "amazon.titan-embed-text-v2:0",
+                           region: str = "us-east-1",
+                           **kwargs) -> BedrockEmbeddingProvider:
+    """
+    Factory function to create a Bedrock embedding provider.
+
+    Args:
+        model_id: Bedrock model identifier
+        region: AWS region
+        **kwargs: Additional arguments for BedrockEmbeddingProvider
+
+    Returns:
+        Configured BedrockEmbeddingProvider instance
+    """
+    return BedrockEmbeddingProvider(model_id=model_id, region=region, **kwargs)

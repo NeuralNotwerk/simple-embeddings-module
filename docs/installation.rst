@@ -22,7 +22,7 @@ Quick Installation
 
    # Test CLI
    sem-cli --help
-   
+
    # Test Python import
    python -c "from simple_embeddings_module import SEMSimple; print('✅ Installation successful!')"
 
@@ -60,7 +60,7 @@ macOS
 
    # Install Python if needed
    brew install python@3.11
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -83,7 +83,7 @@ Linux
    # Install dependencies
    sudo apt update
    sudo apt install python3.10 python3.10-venv python3.10-dev git
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -97,7 +97,7 @@ Linux
 
    # Install dependencies
    sudo yum install python3 python3-venv python3-devel git
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -111,7 +111,7 @@ Linux
 
    # Install CUDA toolkit (if not already installed)
    # Follow NVIDIA's official installation guide
-   
+
    # PyTorch with CUDA support is automatically installed
    # Verify GPU detection:
    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
@@ -124,7 +124,7 @@ Windows
 .. code-block:: batch
 
    REM Install Git if needed (download from git-scm.com)
-   
+
    REM Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -156,20 +156,20 @@ Docker Installation
 .. code-block:: dockerfile
 
    FROM python:3.11-slim
-   
+
    # Install system dependencies
    RUN apt-get update && apt-get install -y \
        git \
        && rm -rf /var/lib/apt/lists/*
-   
+
    # Clone and install SEM
    WORKDIR /app
    RUN git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git .
    RUN pip install -e .
-   
+
    # Set up working directory
    WORKDIR /workspace
-   
+
    # Default command
    CMD ["sem-cli", "--help"]
 
@@ -179,10 +179,10 @@ Docker Installation
 
    # Build image
    docker build -t sem:latest .
-   
+
    # Run interactively
    docker run -it --rm -v $(pwd):/workspace sem:latest bash
-   
+
    # Run specific command
    docker run --rm -v $(pwd):/workspace sem:latest sem-cli simple local search --query "test"
 
@@ -212,18 +212,18 @@ AWS EC2
 
    # Launch EC2 instance with Amazon Linux 2
    # Connect via SSH
-   
+
    # Install dependencies
    sudo yum update -y
    sudo yum install python3 python3-pip git -y
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -e .
-   
+
    # Configure AWS credentials (if using AWS features)
    aws configure
 
@@ -234,11 +234,11 @@ Google Cloud Platform
 
    # Create Compute Engine instance
    # Connect via SSH
-   
+
    # Install dependencies
    sudo apt update
    sudo apt install python3.10 python3.10-venv git -y
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -253,11 +253,11 @@ Azure
 
    # Create Azure VM
    # Connect via SSH
-   
+
    # Install dependencies
    sudo apt update
    sudo apt install python3 python3-venv git -y
-   
+
    # Clone and install SEM
    git clone https://github.com/NeuralNotwerk/simple-embeddings-module.git
    cd simple-embeddings-module
@@ -277,13 +277,13 @@ Development Installation
    cd simple-embeddings-module
    python -m venv .venv
    source .venv/bin/activate
-   
+
    # Install in development mode with all dependencies
    pip install -e ".[dev,test,docs]"
-   
+
    # Install pre-commit hooks
    pre-commit install
-   
+
    # Run tests to verify installation
    python -m pytest test/
 
@@ -319,7 +319,7 @@ Optional Dependencies
 
    # NVIDIA CUDA (Linux/Windows)
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-   
+
    # AMD ROCm (Linux)
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2
 
@@ -333,7 +333,7 @@ Verification
    # Test CLI
    sem-cli --help
    sem-cli simple --help
-   
+
    # Test local functionality
    echo "test document" | sem-cli simple local index
    sem-cli simple local search --query "test"
@@ -343,16 +343,16 @@ Verification
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    # Create instance
    sem = SEMSimple()
-   
+
    # Add test document
    sem.add_text("This is a test document for verification.")
-   
+
    # Search
    results = sem.search("test verification")
-   
+
    print(f"✅ Found {len(results)} results")
    if results:
        print(f"Score: {results[0]['similarity_score']:.3f}")
@@ -362,11 +362,11 @@ Verification
 .. code-block:: python
 
    import torch
-   
+
    print(f"PyTorch version: {torch.__version__}")
    print(f"CUDA available: {torch.cuda.is_available()}")
    print(f"MPS available: {torch.backends.mps.is_available()}")
-   
+
    if torch.cuda.is_available():
        print(f"CUDA device: {torch.cuda.get_device_name()}")
    elif torch.backends.mps.is_available():
@@ -379,7 +379,7 @@ Verification
    # Set up AWS credentials first
    export AWS_ACCESS_KEY_ID=your_key
    export AWS_SECRET_ACCESS_KEY=your_secret
-   
+
    # Test AWS functionality
    echo "test aws document" | sem-cli simple aws index --bucket test-sem-installation
    sem-cli simple aws search --query "test" --bucket test-sem-installation
@@ -395,7 +395,7 @@ Troubleshooting
 
    # Check Python version
    python --version
-   
+
    # Use specific Python version if needed
    python3.10 -m venv .venv
 
@@ -405,7 +405,7 @@ Troubleshooting
 
    # Fix permission issues
    sudo chown -R $USER:$USER ~/.cache/huggingface/
-   
+
    # Or use user installation
    pip install --user -e .
 
@@ -415,7 +415,7 @@ Troubleshooting
 
    # Test internet connectivity
    curl -I https://huggingface.co
-   
+
    # Use proxy if needed
    pip install -e . --proxy http://proxy.company.com:8080
 
@@ -425,7 +425,7 @@ Troubleshooting
 
    # Check NVIDIA driver
    nvidia-smi
-   
+
    # Reinstall PyTorch with correct CUDA version
    pip uninstall torch torchvision torchaudio
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
@@ -444,7 +444,7 @@ Troubleshooting
 
    # Check AWS credentials
    aws sts get-caller-identity
-   
+
    # Check AWS region
    aws configure get region
 

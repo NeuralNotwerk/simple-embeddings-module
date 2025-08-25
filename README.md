@@ -48,6 +48,9 @@ ls -d ./docs/* | sem-cli simple aws indexfiles --bucket my-bucket
 
 # Search semantically
 sem-cli simple local search --query "machine learning"
+
+# List indexed documents
+sem-cli simple local list
 ```
 
 ## 📚 Documentation
@@ -85,11 +88,21 @@ sem = SEMSimple()
 sem.add_text("Machine learning transforms software development.")
 results = sem.search("AI technology")
 
+# List what's indexed
+docs = sem.list_documents()
+for doc in docs:
+    print(f"ID: {doc['id']}, Text: {doc['text'][:50]}...")
+
 # AWS cloud semantic search
 from simple_embeddings_module import simple_aws
 sem = simple_aws(bucket_name="my-semantic-search")
 sem.add_text("Cloud-based ML deployment strategies.")
 results = sem.search("deployment")
+
+# List AWS documents
+docs = sem.list_documents(limit=5)
+for doc in docs:
+    print(f"ID: {doc['id']}, Created: {doc['created_at']}")
 ```
 
 ### CLI Simple Interface
@@ -98,10 +111,12 @@ results = sem.search("deployment")
 # Local operations
 echo "Machine learning content" | sem-cli simple local index
 sem-cli simple local search --query "AI algorithms"
+sem-cli simple local list
 
 # AWS operations
 echo "Cloud deployment guide" | sem-cli simple aws index --bucket my-docs
 sem-cli simple aws search --query "deployment" --bucket my-docs
+sem-cli simple aws list --bucket my-docs
 ```
 
 ### Pipeline Integration
@@ -113,9 +128,13 @@ find ./docs -name "*.md" | sem-cli simple local indexfiles
 # Search your docs
 sem-cli simple local search --query "installation instructions"
 
+# List what's indexed
+sem-cli simple local list
+
 # Team knowledge base in the cloud
 ls -d ./team_docs/* | sem-cli simple aws indexfiles --bucket team-knowledge
 sem-cli simple aws search --query "project requirements" --bucket team-knowledge
+sem-cli simple aws list --bucket team-knowledge
 ```
 
 ## 🏗️ Architecture
@@ -132,7 +151,7 @@ SEM uses a plugin-based architecture with four main component types:
 │ • openai        │    │ • hierarchy     │    │ • gcs (TODO)    │    │                 │
 │ • bedrock       │    │   grouping      │    │                 │    │                 │
 │ • ollama        │    │ • semantic      │    │                 │    │                 │
-│ • llamacpp      │    │ • chunk_mux     │    │                 │    │                 │
+│ • llamacpp(TODO)│    │ • chunk_mux     │    │                 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 

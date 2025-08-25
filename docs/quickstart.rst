@@ -23,18 +23,18 @@ Your First Semantic Search
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    # Create semantic search instance
    sem = SEMSimple()
-   
+
    # Add some documents
    sem.add_text("Machine learning is transforming software development.")
    sem.add_text("Python is a popular programming language for AI.")
    sem.add_text("Docker containers help with application deployment.")
-   
+
    # Search semantically (not just keywords!)
    results = sem.search("artificial intelligence")
-   
+
    # Print results
    for result in results:
        print(f"Score: {result['similarity_score']:.3f}")
@@ -49,7 +49,7 @@ Your First Semantic Search
    echo "Machine learning transforms software development" | sem-cli simple local index
    echo "Python is popular for AI applications" | sem-cli simple local index
    echo "Docker helps with deployment" | sem-cli simple local index
-   
+
    # Search semantically
    sem-cli simple local search --query "artificial intelligence"
 
@@ -60,10 +60,10 @@ Your First Semantic Search
    # Set up AWS credentials first
    export AWS_ACCESS_KEY_ID=your_key
    export AWS_SECRET_ACCESS_KEY=your_secret
-   
+
    # Index to AWS
    echo "Cloud-based machine learning deployment" | sem-cli simple aws index --bucket my-sem-bucket
-   
+
    # Search AWS index
    sem-cli simple aws search --query "ML deployment" --bucket my-sem-bucket
 
@@ -94,7 +94,7 @@ Now that you have semantic search working, explore these paths:
 
    # Index all markdown files in your project
    find . -name "*.md" | sem-cli simple local indexfiles
-   
+
    # Search your documentation
    sem-cli simple local search --query "installation instructions"
 
@@ -104,7 +104,7 @@ Now that you have semantic search working, explore these paths:
 
    # Index files to AWS for team sharing
    ls -d ./docs/* | sem-cli simple aws indexfiles --bucket team-docs
-   
+
    # Team members can search the same index
    sem-cli simple aws search --query "API documentation" --bucket team-docs
 
@@ -113,20 +113,20 @@ Now that you have semantic search working, explore these paths:
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    # Custom storage location
    sem = SEMSimple(storage_path="./my_custom_index")
-   
+
    # Batch add documents
    documents = [
        "Document 1 content...",
        "Document 2 content...",
        "Document 3 content..."
    ]
-   
+
    for doc in documents:
        sem.add_text(doc)
-   
+
    # Advanced search with more results
    results = sem.search("your query", top_k=10)
 
@@ -146,7 +146,7 @@ Common Patterns
 
    # Index all documentation
    find ./docs -name "*.md" -o -name "*.rst" | sem-cli simple local indexfiles
-   
+
    # Search for topics
    sem-cli simple local search --query "getting started"
    sem-cli simple local search --query "API reference"
@@ -158,7 +158,7 @@ Common Patterns
 
    # Index Python files
    find ./src -name "*.py" | sem-cli simple local indexfiles
-   
+
    # Find code by functionality
    sem-cli simple local search --query "database connection"
    sem-cli simple local search --query "error handling"
@@ -169,7 +169,7 @@ Common Patterns
 
    # Index research papers (AWS for large collections)
    ls ~/papers/*.pdf | sem-cli simple aws indexfiles --bucket research-papers
-   
+
    # Find papers by topic
    sem-cli simple aws search --query "neural networks" --bucket research-papers
 
@@ -193,7 +193,7 @@ If AWS operations fail:
 
    # Check credentials are set
    aws sts get-caller-identity
-   
+
    # Or set them explicitly
    export AWS_ACCESS_KEY_ID=your_key
    export AWS_SECRET_ACCESS_KEY=your_secret
@@ -221,7 +221,7 @@ Getting Help
    sem-cli --help                    # Overview of all commands
    sem-cli simple --help             # Complete simple interface help
    sem-cli help simple               # Contextual simple interface help
-   
+
    # Specific command help
    sem-cli init --help
    sem-cli search --help

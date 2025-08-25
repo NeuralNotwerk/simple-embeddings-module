@@ -82,6 +82,10 @@ Operations
 
    Search the semantic index for similar content
 
+.. option:: list
+
+   List documents in the semantic index
+
 Options
 ~~~~~~~
 
@@ -136,16 +140,16 @@ Examples
 
    # Index text from stdin
    echo "Machine learning transforms software" | sem-cli simple local index
-   
+
    # Index multiple text arguments
    sem-cli simple local index --text "Document 1" "Document 2"
-   
+
    # Index files from ls output
    ls *.md | sem-cli simple local indexfiles
-   
+
    # Index specific files
    sem-cli simple local indexfiles --files doc1.txt doc2.txt
-   
+
    # Search with custom settings
    sem-cli simple local search --query "AI" --index my_docs --top-k 10
 
@@ -155,13 +159,13 @@ Examples
 
    # Index text to AWS
    echo "Cloud deployment strategies" | sem-cli simple aws index --bucket my-bucket
-   
+
    # Index files to AWS
    find ./docs -name "*.md" | sem-cli simple aws indexfiles --bucket docs-search
-   
+
    # Search AWS index
    sem-cli simple aws search --query "deployment" --bucket my-bucket --top-k 3
-   
+
    # Custom AWS configuration
    sem-cli simple aws index --bucket my-bucket --region us-west-2 --model amazon.titan-embed-text-v1
 
@@ -172,7 +176,7 @@ Examples
    # Documentation pipeline
    find ./docs -name "*.rst" -o -name "*.md" | sem-cli simple local indexfiles --index docs
    sem-cli simple local search --query "installation" --index docs
-   
+
    # Code search pipeline
    find ./src -name "*.py" | sem-cli simple aws indexfiles --bucket code-search
    sem-cli simple aws search --query "database connection" --bucket code-search
@@ -215,10 +219,10 @@ Examples
 
    # Initialize with defaults
    sem-cli init
-   
+
    # Initialize with custom settings
    sem-cli init --name my_docs --path ./my_indexes --model all-mpnet-base-v2
-   
+
    # Initialize from configuration file
    sem-cli init --config my_config.json
 
@@ -260,10 +264,10 @@ Examples
 
    # Add files to index
    sem-cli add --files doc1.txt doc2.txt doc3.txt --path ./my_indexes
-   
+
    # Add text directly
    sem-cli add --text "Document content 1" "Document content 2" --path ./my_indexes
-   
+
    # Add using configuration file
    sem-cli add --files *.txt --config my_config.json
 
@@ -312,10 +316,10 @@ Examples
 
    # Basic search
    sem-cli search "machine learning" --path ./my_indexes
-   
+
    # Search with custom parameters
    sem-cli search "AI algorithms" --path ./my_indexes --top-k 5 --threshold 0.2
-   
+
    # Search using configuration file
    sem-cli search "neural networks" --config my_config.json
 
@@ -349,7 +353,7 @@ Examples
 
    # Show database info
    sem-cli info --path ./my_indexes
-   
+
    # Show info using configuration file
    sem-cli info --config my_config.json
 
@@ -395,7 +399,7 @@ Examples
 
    # Generate basic configuration
    sem-cli config --output my_config.json
-   
+
    # Generate configuration with custom settings
    sem-cli config --output advanced_config.json --model all-mpnet-base-v2 --storage s3
 
@@ -425,7 +429,7 @@ Examples
 
    # General help overview
    sem-cli help
-   
+
    # Specific command help
    sem-cli help simple
    sem-cli help init
@@ -513,15 +517,15 @@ Error Messages
 
    # Missing required arguments
    sem-cli simple: error: the following arguments are required: backend, operation
-   
+
    # AWS credentials not found
    ❌ AWS credentials not available. Configure with:
       - AWS CLI: aws configure
       - Environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-   
+
    # File not found
    ❌ File not found: nonexistent.txt
-   
+
    # Missing search query
    ❌ Search operation requires --query argument
    Example: sem-cli simple local search --query 'your search terms'

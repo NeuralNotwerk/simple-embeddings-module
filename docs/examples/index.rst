@@ -51,7 +51,7 @@ Quick Reference
 
    # Documentation search (Python)
    from simple_embeddings_module import SEMSimple
-   
+
    sem = SEMSimple()
    sem.add_text("Installation instructions for the application...")
    results = sem.search("how to install")
@@ -66,7 +66,7 @@ Quick Reference
 
    # Cloud-based team search (Python)
    from simple_embeddings_module import simple_aws
-   
+
    sem = simple_aws(bucket_name="team-knowledge")
    sem.add_text("Project requirements and specifications...")
    results = sem.search("requirements")
@@ -155,7 +155,7 @@ Running the Examples
    # Set up AWS credentials
    export AWS_ACCESS_KEY_ID=your_key
    export AWS_SECRET_ACCESS_KEY=your_secret
-   
+
    # Or use AWS CLI
    aws configure
 
@@ -166,7 +166,7 @@ Running the Examples
    # Test local functionality
    echo "test document" | sem-cli simple local index
    sem-cli simple local search --query "test"
-   
+
    # Test AWS functionality (if configured)
    echo "test document" | sem-cli simple aws index --bucket test-sem-bucket
    sem-cli simple aws search --query "test" --bucket test-sem-bucket
@@ -187,11 +187,11 @@ Many examples use sample data included in the repository:
 
    # Create sample documents for testing
    mkdir -p ./test_docs
-   
+
    echo "Machine learning transforms software development" > ./test_docs/ml.txt
    echo "Python is excellent for data science applications" > ./test_docs/python.txt
    echo "Docker containers simplify application deployment" > ./test_docs/docker.txt
-   
+
    # Index the test documents
    sem-cli simple local indexfiles --files ./test_docs/*.txt
 
@@ -233,19 +233,19 @@ We welcome community examples! To contribute:
 
    """
    Example: [Brief Description]
-   
+
    This example demonstrates [specific functionality].
-   
+
    Prerequisites:
    - [List any requirements]
-   
+
    Expected Output:
    - [Describe what users should see]
-   
+
    Performance Notes:
    - [Any relevant performance information]
    """
-   
+
    # Your example code here
 
 **Next: Start with** :doc:`quickstart-examples` **for immediate results**

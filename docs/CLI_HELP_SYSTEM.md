@@ -83,7 +83,7 @@ sem-cli simple --help
 - Default values for all options
 - Extensive examples section with:
   - Local backend examples
-  - AWS backend examples  
+  - AWS backend examples
   - Common pipeline patterns
   - Custom configuration examples
 
@@ -97,7 +97,7 @@ sem-cli simple local search
 #        Example: sem-cli simple local search --query 'your search terms'
 
 # Missing text input
-sem-cli simple local index  
+sem-cli simple local index
 # Shows: ❌ No text to index. Provide text via stdin or --text arguments
 #        Examples:
 #          echo 'some text' | sem-cli simple local index
@@ -116,7 +116,7 @@ Help is structured to guide users from general to specific:
 
 ### All Help Methods Work
 ✅ `sem-cli --help` - Main help
-✅ `sem-cli help` - Interactive help overview  
+✅ `sem-cli help` - Interactive help overview
 ✅ `sem-cli help simple` - Contextual simple help
 ✅ `sem-cli simple --help` - Complete simple command help
 ✅ `sem-cli init --help` - Traditional command help

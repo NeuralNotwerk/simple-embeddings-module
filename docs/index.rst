@@ -82,7 +82,7 @@ Quick Start
 .. code-block:: python
 
    from simple_embeddings_module import SEMSimple
-   
+
    sem = SEMSimple()
    sem.add_text("Machine learning is transforming software development.")
    results = sem.search("AI technology")
@@ -94,10 +94,10 @@ Quick Start
 
    # Index text from stdin
    echo "some text" | sem-cli simple local index
-   
+
    # Index files from ls output
    ls -d ./docs/* | sem-cli simple aws indexfiles --bucket my-bucket
-   
+
    # Search for content
    sem-cli simple local search --query "machine learning"
 

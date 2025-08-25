@@ -4,6 +4,7 @@ planning/
 AmazonQ.md
 dev_docs/
 tools/
+indexes/
 
 # Python
 __pycache__/

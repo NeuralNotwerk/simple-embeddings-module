@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Demo script showing semantic code chunking in action."""
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.simple_embeddings_module.chunking.mod_chunking_ts import ts_get_code_chunks
@@ -57,8 +58,8 @@ def main():
     print("=" * 50)
 
     # Write sample code to a temporary file
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
         f.write(SAMPLE_CODE)
@@ -89,7 +90,7 @@ def main():
 
             print(f"📦 Chunk {i}: {lines:2d} lines, {chars:3d} chars")
             print(f"   Starts with: {first_line}")
-            print(f"   Preview:")
+            print("   Preview:")
 
             # Show first few lines of the chunk
             preview_lines = chunk.split('\n')[:3]
@@ -107,7 +108,7 @@ def main():
 
     print("✨ Each chunk represents a complete semantic unit:")
     print("   • Classes with all their methods")
-    print("   • Standalone functions") 
+    print("   • Standalone functions")
     print("   • Import statements and module-level code")
     print()
     print("🎯 Perfect for semantic search with code embeddings!")

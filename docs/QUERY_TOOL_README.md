@@ -34,7 +34,7 @@ The tool automatically finds and embeds:
 
 Current dev_docs content:
 - `pytorch-over-numpy.md` - PyTorch vs NumPy comparison
-- `faiss_INSTALL.md` - FAISS installation guide  
+- `faiss_INSTALL.md` - FAISS installation guide
 - `faiss_README.md` - FAISS library overview
 - `orjson_README.md` - orjson JSON library documentation
 - `sf_sfr-embedding-code-2b_r.md` - Embedding model documentation
