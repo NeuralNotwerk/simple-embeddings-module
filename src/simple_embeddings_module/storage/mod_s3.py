@@ -104,6 +104,7 @@ class S3Storage(StorageBackendBase):
         "backup_supported": True,
         "atomic_operations": True,
     }
+
     def __init__(self, **config):
         """Initialize S3 storage backend with configuration validation"""
         super().__init__(**config)
@@ -121,6 +122,7 @@ class S3Storage(StorageBackendBase):
         self.serializer = OrjsonSerializationProvider()
         # Verify bucket access
         self._verify_bucket_access()
+
     def _init_s3_client(self, config: Dict[str, Any]) -> None:
         """Initialize S3 client with credentials and configuration"""
         session_kwargs = {}
@@ -139,6 +141,7 @@ class S3Storage(StorageBackendBase):
             client_kwargs["endpoint_url"] = config["endpoint_url"]
         self.s3_client = session.client("s3", **client_kwargs)
         logger.info("Initialized S3 client for bucket '%s' in region '%s'", self.bucket_name, self.region)
+
     def _verify_bucket_access(self) -> None:
         """Verify that we can access the S3 bucket"""
         try:
@@ -157,9 +160,11 @@ class S3Storage(StorageBackendBase):
             raise StorageBackendError(
                 "AWS credentials not found. Configure credentials via AWS CLI, environment variables, or IAM roles"
             )
+
     def _get_s3_key(self, index_name: str, file_type: str) -> str:
         """Generate S3 key for index files"""
         return "%s%s/%s" % (self.prefix, index_name, file_type)
+
     def _compress_data(self, data: bytes) -> bytes:
         """Compress data using gzip if compression is enabled"""
         if not self.compression:
@@ -168,6 +173,7 @@ class S3Storage(StorageBackendBase):
         with gzip.GzipFile(fileobj=compressed, mode="wb") as gz:
             gz.write(data)
         return compressed.getvalue()
+
     def _decompress_data(self, data: bytes) -> bytes:
         """Decompress gzip data if compression was used"""
         if not self.compression:
@@ -178,6 +184,7 @@ class S3Storage(StorageBackendBase):
         except gzip.BadGzipFile:
             # Data might not be compressed (backward compatibility)
             return data
+
     def _upload_object(self, key: str, data: bytes, metadata: Optional[Dict[str, str]] = None) -> None:
         """Upload object to S3 with proper configuration"""
         put_kwargs = {
@@ -198,8 +205,9 @@ class S3Storage(StorageBackendBase):
         try:
             self.s3_client.put_object(**put_kwargs)
             logger.debug("Successfully uploaded object to S3: %s", key)
-        except ClientError:
+        except ClientError as e:
             raise StorageBackendError("Failed to upload object to S3 key '%s': %s" % (key, e))
+
     def _download_object(self, key: str) -> bytes:
         """Download object from S3"""
         try:
@@ -211,6 +219,7 @@ class S3Storage(StorageBackendBase):
                 raise StorageBackendError("S3 object not found: %s" % key)
             else:
                 raise StorageBackendError("Failed to download S3 object '%s': %s" % (key, e))
+
     def save_index(self, vectors: torch.Tensor, metadata: Dict[str, Any], index_name: str) -> bool:
         """Save vector index and metadata to S3"""
         logger.info("Saving index '%s' to S3 bucket '%s'", index_name, self.bucket_name)
@@ -251,6 +260,7 @@ class S3Storage(StorageBackendBase):
             except Exception:
                 pass  # Don't fail the original operation due to cleanup issues
             return False
+
     def load_index(self, index_name: str, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """Load vector index and metadata from S3"""
         logger.info("Loading index '%s' from S3 bucket '%s'", index_name, self.bucket_name)
@@ -273,6 +283,7 @@ class S3Storage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to load index '%s' from S3: %s", index_name, e)
             raise StorageBackendError("Failed to load index '%s': %s" % (index_name, e))
+
     def list_indexes(self) -> List[str]:
         """List available indexes in S3 bucket"""
         logger.debug("Listing indexes in S3 bucket '%s'", self.bucket_name)
@@ -284,16 +295,17 @@ class S3Storage(StorageBackendBase):
                     for obj in page["Contents"]:
                         key = obj["Key"]
                         # Extract index name from key pattern: prefix/index_name/file_type
-                        if key.startswith(self.prefix) and "/" in key[len(self.prefix) :]:
-                            index_name = key[len(self.prefix) :].split("/")[0]
+                        if key.startswith(self.prefix) and "/" in key[len(self.prefix):]:
+                            index_name = key[len(self.prefix):].split("/")[0]
                             if index_name:  # Skip empty names
                                 indexes.add(index_name)
             result = sorted(list(indexes))
             logger.debug("Found %d indexes in S3", len(result))
             return result
-        except ClientError:
+        except ClientError as e:
             logger.error("Failed to list indexes in S3: %s", e)
             raise StorageBackendError("Failed to list indexes: %s" % e)
+
     def delete_index(self, index_name: str) -> bool:
         """Delete an index from S3"""
         logger.info("Deleting index '%s' from S3 bucket '%s'", index_name, self.bucket_name)
@@ -312,7 +324,7 @@ class S3Storage(StorageBackendBase):
             # Delete objects in batches (S3 allows up to 1000 objects per delete request)
             batch_size = 1000
             for i in range(0, len(objects_to_delete), batch_size):
-                batch = objects_to_delete[i : i + batch_size]
+                batch = objects_to_delete[i: i + batch_size]
                 delete_request = {"Objects": batch, "Quiet": True}  # Don't return info about successful deletions
                 response = self.s3_client.delete_objects(Bucket=self.bucket_name, Delete=delete_request)
                 # Check for errors
@@ -322,9 +334,10 @@ class S3Storage(StorageBackendBase):
                     return False
             logger.info("Successfully deleted index '%s' from S3 (%d objects)", index_name, len(objects_to_delete))
             return True
-        except ClientError:
+        except ClientError as e:
             logger.error("Failed to delete index '%s' from S3: %s", index_name, e)
             return False
+
     def index_exists(self, index_name: str) -> bool:
         """Check if an index exists in S3"""
         try:
@@ -339,6 +352,7 @@ class S3Storage(StorageBackendBase):
             else:
                 logger.error("Error checking if index '%s' exists: %s", index_name, e)
                 return False
+
     def get_index_info(self, index_name: str) -> Optional[IndexInfo]:
         """Get detailed information about an index"""
         if not self.index_exists(index_name):
@@ -381,9 +395,10 @@ class S3Storage(StorageBackendBase):
                 size_bytes=total_size,
                 backend_type="s3",
             )
-        except ClientError:
+        except ClientError as e:
             logger.error("Failed to get info for index '%s': %s", index_name, e)
             return None
+
     def _cleanup_partial_upload(self, index_name: str) -> None:
         """Clean up partial uploads in case of failure"""
         logger.debug("Cleaning up partial upload for index '%s'", index_name)
@@ -400,6 +415,7 @@ class S3Storage(StorageBackendBase):
                             pass  # Best effort cleanup
         except Exception:
             pass  # Best effort cleanup
+
     def get_capabilities(self) -> Dict[str, Any]:
         """Return S3 storage backend capabilities"""
         capabilities = self.CAPABILITIES.copy()

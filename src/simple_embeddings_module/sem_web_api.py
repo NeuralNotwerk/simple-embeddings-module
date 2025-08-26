@@ -16,21 +16,16 @@ Features:
 - CORS support for web frontends
 """
 import logging
-import inspect
-from typing import Dict, Any, List, Optional, Union
-from pathlib import Path
+from typing import Any, List, Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-import click
 
-from .sem_cli_click import cli
 from .sem_simple import SEMSimple
 from .sem_simple_aws import SEMSimpleAWS
-from .sem_simple_gcp import SEMSimpleGCP
 
 logger = logging.getLogger(__name__)
 
@@ -374,13 +369,13 @@ async def api_config(request: ConfigRequest, user=Depends(get_current_user)):
         # Generate configuration template
         config_kwargs = {}
         if request.provider:
-            config_kwargs[f"embedding.provider"] = request.provider
+            config_kwargs["embedding.provider"] = request.provider
         if request.model:
-            config_kwargs[f"embedding.model"] = request.model
+            config_kwargs["embedding.model"] = request.model
         if request.storage:
-            config_kwargs[f"storage.backend"] = request.storage
+            config_kwargs["storage.backend"] = request.storage
         if request.path:
-            config_kwargs[f"storage.path"] = request.path
+            config_kwargs["storage.path"] = request.path
 
         if request.output:
             # Save to file

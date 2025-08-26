@@ -16,10 +16,7 @@ Migration Benefits:
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
-
 import click
-
 from .sem_utils import setup_logging
 from .sem_auto_resolve import auto_resolve_command_args, list_available_databases, list_all_conflicts
 
@@ -127,7 +124,7 @@ def init(verbose, config, db, path, model):
             logger.info("Database: %s", args.db)
 
         # Create database
-        db_instance = SEMDatabase(config=config_obj.to_dict())
+        _ = SEMDatabase(config=config_obj.to_dict())
 
         # Save config if not provided
         if not config:
@@ -1539,20 +1536,20 @@ def serve(verbose, config, host, port, reload, workers):
         - Error handling and validation
     """
     setup_cli_logging(verbose)
-    
+
     try:
         from .sem_web_api import run_server
-        
+
         logger.info("Starting SEM Web API server...")
         logger.info("Host: %s, Port: %s, Reload: %s, Workers: %s", host, port, reload, workers)
-        
+
         if reload and workers > 1:
             logger.warning("Auto-reload is not compatible with multiple workers. Using single worker.")
             workers = 1
-        
+
         # Start the server
         run_server(host=host, port=port, reload=reload)
-        
+
     except ImportError as e:
         logger.error("Failed to import web API dependencies: %s", e)
         click.echo("Error: Web API dependencies not installed.", err=True)

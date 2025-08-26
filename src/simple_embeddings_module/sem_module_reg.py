@@ -22,6 +22,7 @@ class ConfigParameter:
     allows_none_null: bool = False
     value_opt_default: Any = None
     value_opt_regex: str = ""
+
     def __post_init__(self):
         """Validate parameter definition"""
         valid_types = ["str", "numeric", "list", "bool"]
@@ -29,6 +30,7 @@ class ConfigParameter:
             raise ValueError("Invalid value_type: %s. Must be one of %s" % (self.value_type, valid_types))
         if not re.match(r"^[a-z][a-z0-9_]*$", self.key_name):
             raise ValueError("Invalid key_name: %s. Must be lowercase snake_case" % self.key_name)
+
 @dataclass
 class ModuleCapabilities:
     """Module capabilities and configuration requirements"""
@@ -37,6 +39,7 @@ class ModuleCapabilities:
     module_class: Type
     config_parameters: List[ConfigParameter] = field(default_factory=list)
     capabilities: Dict[str, Any] = field(default_factory=dict)
+
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and normalize configuration for this module"""
         validated = {}
@@ -60,6 +63,7 @@ class ModuleCapabilities:
             # Type conversion and validation
             validated[param.key_name] = self._validate_parameter_value(param, value)
         return validated
+
     def _validate_parameter_value(self, param: ConfigParameter, value: Any) -> Any:
         """Validate and convert a single parameter value"""
         if param.value_type == "str":
@@ -98,6 +102,7 @@ class ModuleCapabilities:
             return self._parse_bool_value(param.key_name, value)
         else:
             raise ValueError("Unknown parameter type: %s" % param.value_type)
+
     def _parse_bool_value(self, key_name: str, value: Any) -> bool:
         """Parse boolean value from various string representations"""
         if isinstance(value, bool):
@@ -113,6 +118,7 @@ class ModuleCapabilities:
             raise ValueError(
                 "Parameter '%s' boolean value '%s' not recognized. Use: %s" % (key_name, value, true_values | false_values)
             )
+
 class ModuleRegistry:
     """Registry for managing modules within a SEMDatabase instance"""
     def __init__(self, instance_id: str):
@@ -124,6 +130,7 @@ class ModuleRegistry:
             "chunking": {},
         }
         self._active_modules: Dict[str, Any] = {}
+
     def register_module(self, capabilities: ModuleCapabilities) -> None:
         """Register a module with this registry"""
         module_type = capabilities.module_type
@@ -132,6 +139,7 @@ class ModuleRegistry:
             raise ValueError("Unknown module type: %s" % module_type)
         self.registered_modules[module_type][module_name] = capabilities
         logger.debug("Registered %s module: %s for instance %s", module_type, module_name, self.instance_id)
+
     def unregister_module(self, module_type: str, module_name: str) -> None:
         """Unregister a module from this registry"""
         if module_type in self.registered_modules:
@@ -140,12 +148,15 @@ class ModuleRegistry:
             active_key = f"{module_type}_{module_name}"
             self._active_modules.pop(active_key, None)
             logger.debug("Unregistered %s module: %s from instance %s", module_type, module_name, self.instance_id)
+
     def get_available_modules(self, module_type: str) -> List[str]:
         """Get list of available module names for a given type"""
         return list(self.registered_modules.get(module_type, {}).keys())
+
     def get_module_capabilities(self, module_type: str, module_name: str) -> Optional[ModuleCapabilities]:
         """Get capabilities for a specific module"""
         return self.registered_modules.get(module_type, {}).get(module_name)
+
     def instantiate_module(self, module_type: str, module_name: str, config: Dict[str, Any]) -> Any:
         """Instantiate a module with validated configuration"""
         capabilities = self.get_module_capabilities(module_type, module_name)
@@ -174,10 +185,12 @@ class ModuleRegistry:
         except Exception as e:
             logger.error("Failed to instantiate %s.%s: %s", module_type, module_name, e)
             raise RuntimeError("Failed to instantiate %s.%s: %s" % (module_type, module_name, e))
+
     def get_active_module(self, module_type: str, module_name: str) -> Optional[Any]:
         """Get an active module instance"""
         active_key = f"{module_type}_{module_name}"
         return self._active_modules.get(active_key)
+
     def unload_all_modules_except(self, module_type: str, keep_module: str) -> None:
         """Unload all modules of a type except the specified one"""
         modules_to_remove = []
@@ -187,10 +200,12 @@ class ModuleRegistry:
         for key in modules_to_remove:
             del self._active_modules[key]
             logger.debug("Unloaded module: %s from instance %s", key, self.instance_id)
+
 class GlobalModuleDiscovery:
     """Global module discovery and registration system"""
     _discovered_modules: Dict[str, ModuleCapabilities] = {}
     _discovery_complete = False
+
     @classmethod
     def discover_modules(cls, base_path: Optional[Path] = None) -> None:
         """Discover all modules in the prescribed folders"""
@@ -210,6 +225,7 @@ class GlobalModuleDiscovery:
                 cls._discover_modules_in_folder(module_type, folder_path)
         cls._discovery_complete = True
         logger.info("Module discovery complete. Found %d modules.", len(cls._discovered_modules))
+
     @classmethod
     def _discover_modules_in_folder(cls, module_type: str, folder_path: Path) -> None:
         """Discover modules in a specific folder"""
@@ -234,6 +250,7 @@ class GlobalModuleDiscovery:
                         logger.debug("No capabilities returned for: %s", py_file.name)
                 except Exception as e:
                     logger.warning("Failed to load module %s: %s", py_file, e)
+
     @classmethod
     def _load_module_capabilities(cls, module_type: str, py_file: Path) -> Optional[ModuleCapabilities]:
         """Load module capabilities from a Python file"""
@@ -269,11 +286,8 @@ class GlobalModuleDiscovery:
             return None
         # Find the implementation class
         for name, obj in inspect.getmembers(module, inspect.isclass):
-            if (
-                obj.__module__ == module.__name__
-                and hasattr(obj, "__bases__")
-                and any(base.__name__ == target_base for base in obj.__mro__)
-            ):
+            if (obj.__module__ == module.__name__ and hasattr(obj, "__bases__") and any(
+                    base.__name__ == target_base for base in obj.__mro__)):
                 # Get configuration parameters if defined
                 config_params = getattr(obj, "CONFIG_PARAMETERS", [])
                 capabilities = getattr(obj, "CAPABILITIES", {})
@@ -285,12 +299,14 @@ class GlobalModuleDiscovery:
                     capabilities=capabilities,
                 )
         return None
+
     @classmethod
     def get_discovered_modules(cls) -> Dict[str, ModuleCapabilities]:
         """Get all discovered modules"""
         if not cls._discovery_complete:
             cls.discover_modules()
         return cls._discovered_modules.copy()
+
     @classmethod
     def create_registry_for_instance(cls, instance_id: str) -> ModuleRegistry:
         """Create a new registry for a SEMDatabase instance"""
@@ -301,13 +317,17 @@ class GlobalModuleDiscovery:
         for module_key, capabilities in cls._discovered_modules.items():
             registry.register_module(capabilities)
         return registry
+
+
 # Convenience functions for external use
 def discover_all_modules(base_path: Optional[Path] = None) -> None:
     """Discover all available modules"""
     GlobalModuleDiscovery.discover_modules(base_path)
+
 def create_module_registry(instance_id: str) -> ModuleRegistry:
     """Create a new module registry for a SEMDatabase instance"""
     return GlobalModuleDiscovery.create_registry_for_instance(instance_id)
+
 def get_available_modules() -> Dict[str, List[str]]:
     """Get all available modules organized by type"""
     modules = GlobalModuleDiscovery.get_discovered_modules()

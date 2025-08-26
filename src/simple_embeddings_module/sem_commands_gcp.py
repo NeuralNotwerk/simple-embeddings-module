@@ -42,7 +42,7 @@ def cmd_simple_gcp(args):
         if not operation:
             # Initialize empty index
             try:
-                docs = sem.list_documents(limit=1)
+                # docs = sem.list_documents(limit=1)
                 doc_count = sem.count()
                 output_simple_success(
                     f"GCP index ready with {doc_count} documents" if doc_count > 0 else "Empty GCP index initialized",
@@ -178,7 +178,7 @@ def cmd_simple_gcp(args):
         elif operation == "info":
             doc_count = sem.count()
             output_simple_success(
-                f"GCP index information",
+                "GCP index information",
                 formatter,
                 {
                     "bucket_name": sem.bucket_name,

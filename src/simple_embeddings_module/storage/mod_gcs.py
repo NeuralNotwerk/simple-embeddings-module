@@ -40,6 +40,7 @@ class GCSStorage(StorageBackendBase):
         self._client = None
         self._bucket = None
         logger.info("Initialized GCS client for bucket '%s' in region '%s'", bucket_name, region)
+
     @property
     def client(self):
         """Lazy-loaded GCS client."""
@@ -50,13 +51,15 @@ class GCSStorage(StorageBackendBase):
                     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.credentials_path
                 self._client = storage.Client(project=self.project_id)
                 logger.debug("GCS client initialized successfully")
-            except ImportError:
+            except ImportError as e:
+                logger.error("Failed to import Google Cloud Storage dependencies: %s", e)
                 raise ImportError(
                     "Google Cloud Storage dependencies not installed. " "Install with: pip install google-cloud-storage"
                 )
-            except Exception:
+            except Exception as e:
                 raise RuntimeError("Failed to initialize GCS client: %s", e)
         return self._client
+
     @property
     def bucket(self):
         """Lazy-loaded GCS bucket."""
@@ -70,12 +73,14 @@ class GCSStorage(StorageBackendBase):
                     logger.info("Successfully created GCS bucket: %s", self.bucket_name)
                 else:
                     logger.info("Successfully verified access to GCS bucket: %s", self.bucket_name)
-            except Exception:
+            except Exception as e:
                 raise RuntimeError("Failed to access GCS bucket '%s': %s", self.bucket_name, e)
         return self._bucket
+
     def _get_object_key(self, index_name: str, file_type: str) -> str:
         """Generate GCS object key."""
         return "%s/%s/%s" % (self.prefix, index_name, file_type)
+
     def save_index(self, index_name: str, data: Dict[str, Any]) -> bool:
         """Save index data to GCS."""
         try:
@@ -106,6 +111,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to save index '%s' to GCS: %s", index_name, e)
             return False
+
     def load_index(self, index_name: str) -> Optional[Dict[str, Any]]:
         """Load index data from GCS."""
         try:
@@ -126,6 +132,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to load index '%s' from GCS: %s", index_name, e)
             return None
+
     def index_exists(self, index_name: str) -> bool:
         """Check if index exists in GCS."""
         try:
@@ -135,6 +142,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Error checking if index '%s' exists: %s", index_name, e)
             return False
+
     def delete_index(self, index_name: str) -> bool:
         """Delete index from GCS."""
         try:
@@ -150,6 +158,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to delete index '%s' from GCS: %s", index_name, e)
             return False
+
     def list_indexes(self) -> List[str]:
         """List all indexes in GCS bucket."""
         try:
@@ -159,7 +168,7 @@ class GCSStorage(StorageBackendBase):
             indexes = []
             for prefix_obj in blobs.prefixes:
                 # Remove the base prefix and trailing slash
-                index_name = prefix_obj[len(prefix) :].rstrip("/")
+                index_name = prefix_obj[len(prefix):].rstrip("/")
                 if index_name:
                     indexes.append(index_name)
             logger.info("Found %s indexes in GCS bucket", len(indexes))
@@ -167,6 +176,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to list indexes from GCS: %s", e)
             return []
+
     def get_index_info(self, index_name: str) -> Optional[Dict[str, Any]]:
         """Get index metadata from GCS."""
         try:
@@ -190,6 +200,7 @@ class GCSStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to get info for index '%s': %s", index_name, e)
             return None
+
     def backup_index(self, index_name: str, backup_name: str = None) -> bool:
         """Create backup of index in GCS."""
         try:
@@ -203,16 +214,17 @@ class GCSStorage(StorageBackendBase):
             copied_count = 0
             for blob in blobs:
                 # Create new blob name with backup prefix
-                relative_path = blob.name[len(source_prefix) :]
+                relative_path = blob.name[len(source_prefix):]
                 backup_blob_name = backup_prefix + relative_path
                 # Copy blob
-                backup_blob = self.bucket.copy_blob(blob, self.bucket, backup_blob_name)
+                _ = self.bucket.copy_blob(blob, self.bucket, backup_blob_name)
                 copied_count += 1
             logger.info("Successfully backed up index '%s' as '%s' (%s objects)", index_name, backup_name, copied_count)
             return True
         except Exception as e:
             logger.error("Failed to backup index '%s': %s", index_name, e)
             return False
+
     def get_storage_stats(self) -> Dict[str, Any]:
         """Get GCS storage statistics."""
         try:
@@ -226,7 +238,7 @@ class GCSStorage(StorageBackendBase):
                 total_objects += 1
                 total_size += blob.size or 0
                 # Extract index name
-                relative_path = blob.name[len(prefix) :]
+                relative_path = blob.name[len(prefix):]
                 if "/" in relative_path:
                     index_name = relative_path.split("/")[0]
                     indexes.add(index_name)

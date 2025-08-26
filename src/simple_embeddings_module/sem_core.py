@@ -444,7 +444,7 @@ class SEMDatabase:
             if doc_id in documents_dict:
                 del documents_dict[doc_id]
             # Update document metadata
-            document_metadata = metadata.get("document_metadata", [])
+            _ = metadata.get("document_metadata", [])
             # Note: We can't easily remove from document_metadata without knowing the original order
             # This is a limitation of the current structure
             # Update metadata
@@ -473,6 +473,7 @@ class SEMDatabase:
             if self.remove_document(doc_id):
                 removed_count += 1
         return removed_count
+
     def clear_index(self) -> bool:
         """
         Clear all documents from the index while preserving structure.
@@ -504,6 +505,7 @@ class SEMDatabase:
         except Exception as e:
             logger.error("Failed to clear index: %s", e)
             return False
+
     def delete_index(self) -> bool:
         """
         Delete the entire index and its files.
@@ -522,6 +524,7 @@ class SEMDatabase:
         except Exception as e:
             logger.error("Failed to delete index: %s", e)
             return False
+
     def update_document(self, doc_id: str, new_text: str) -> bool:
         """
         Update an existing document's content.
@@ -541,6 +544,7 @@ class SEMDatabase:
         except Exception as e:
             logger.error("Failed to update document '%s': %s", doc_id, e)
             return False
+
     def list_available_modules(self) -> Dict[str, List[str]]:
         """Get list of available modules by type"""
         return {
@@ -549,10 +553,12 @@ class SEMDatabase:
             "serialization": self.registry.get_available_modules("serialization"),
             "chunking": self.registry.get_available_modules("chunking"),
         }
+
     def get_module_capabilities(self, module_type: str, module_name: str) -> Optional[Dict[str, Any]]:
         """Get capabilities for a specific module"""
         capabilities = self.registry.get_module_capabilities(module_type, module_name)
         return capabilities.capabilities if capabilities else None
+
     def switch_embedding_provider(self, provider_name: str, config: Dict[str, Any]) -> None:
         """Switch to a different embedding provider"""
         # Update configuration
@@ -562,6 +568,7 @@ class SEMDatabase:
         # Unload other providers
         self.registry.unload_all_modules_except("embeddings", provider_name)
         logger.info("Switched to embedding provider: %s", provider_name)
+
     def switch_storage_backend(self, backend_name: str, config: Dict[str, Any]) -> None:
         """Switch to a different storage backend"""
         # Update configuration
@@ -571,17 +578,21 @@ class SEMDatabase:
         # Unload other backends
         self.registry.unload_all_modules_except("storage", backend_name)
         logger.info("Switched to storage backend: %s", backend_name)
+
     def __repr__(self) -> str:
         embedding_name = self._embedding_provider.__class__.__name__ if self._embedding_provider else "None"
         storage_name = self._storage_backend.__class__.__name__ if self._storage_backend else "None"
         return f"SEMDatabase(id={self.instance_id[:8]}, embedding={embedding_name}, storage={storage_name})"
+
     def __enter__(self):
         """Context manager entry"""
         return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - cleanup resources"""
         # Cleanup can be added here if needed
         pass
+
 # Convenience functions
 def create_database(config_path: Optional[str] = None, **config_overrides) -> SEMDatabase:
     """Create a new SEMDatabase instance

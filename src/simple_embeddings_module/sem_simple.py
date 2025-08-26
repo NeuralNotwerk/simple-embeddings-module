@@ -307,21 +307,21 @@ class SEMSimple:
     def search(self, query: str, top_k: int = 5, output_format: str = "dict", delimiter: str = ";") -> Union[List[dict], str]:
         """
         Search for documents similar to the query.
-        
+
         Args:
             query: Search query text
             top_k: Number of results to return (default: 5)
             output_format: Output format ("dict", "cli", "json", "csv")
             delimiter: Delimiter for CLI format (default: ";")
-            
+
         Returns:
             List of result dictionaries or formatted string
-            
+
         Example:
             >>> results = sem.search("machine learning", top_k=3)
             >>> for result in results:
             ...     print(f"Score: {result['score']:.3f} - {result['text']}")
-            
+
             >>> cli_results = sem.search("AI", output_format="cli", delimiter="|")
             >>> print(cli_results)
             'doc_1|0.85|Machine learning transforms...|doc_2|0.78|AI technology...'
@@ -361,7 +361,7 @@ class SEMSimple:
                     }
                 )
             logger.info("Search completed: found %s results for '%s'", len(simple_results), query)
-            
+
             # Format output based on requested format
             if output_format == "dict":
                 return simple_results
@@ -383,32 +383,32 @@ class SEMSimple:
         """Format search results for CLI output."""
         if not results:
             return ""
-        
+
         formatted_parts = []
         for result in results:
             # Truncate text for CLI display
             text = result.get("text", "")
             if len(text) > 100:
                 text = text[:97] + "..."
-            
+
             formatted_parts.extend([
                 result.get("id", "unknown"),
                 f"{result.get('score', 0.0):.3f}",
                 text.replace(delimiter, " "),  # Remove delimiter from text
             ])
-        
+
         return delimiter.join(formatted_parts)
 
     def _format_search_results_csv(self, results: List[dict], delimiter: str) -> str:
         """Format search results as CSV."""
         if not results:
             return "id,score,text\n"
-        
+
         lines = ["id,score,text"]
         for result in results:
             text = result.get("text", "").replace('"', '""')  # Escape quotes
             lines.append(f'"{result.get("id", "unknown")}",{result.get("score", 0.0):.3f},"{text}"')
-        
+
         return "\n".join(lines)
 
     def count(self) -> int:
@@ -473,31 +473,31 @@ class SEMSimple:
             return {}
 
     def list_documents(
-        self, 
-        limit: Optional[int] = None, 
-        show_content: bool = True, 
+        self,
+        limit: Optional[int] = None,
+        show_content: bool = True,
         max_content_length: int = 100,
         output_format: str = "dict",
         delimiter: str = ";"
     ) -> Union[List[dict], str]:
         """
         List documents in the search index.
-        
+
         Args:
             limit: Maximum number of documents to return (None for all)
             show_content: Whether to include document content snippets
             max_content_length: Maximum length of content to show
             output_format: Output format ("dict", "cli", "json", "csv")
             delimiter: Delimiter for CLI format (default: ";")
-            
+
         Returns:
             List of document dictionaries or formatted string
-            
+
         Example:
             >>> docs = sem.list_documents(limit=5)
             >>> for doc in docs:
             ...     print(f"ID: {doc['id']}, Text: {doc['text'][:50]}...")
-            
+
             >>> cli_docs = sem.list_documents(limit=3, output_format="cli")
             >>> print(cli_docs)
             'doc_1;Machine learning content...;doc_2;AI algorithms...'
@@ -507,7 +507,7 @@ class SEMSimple:
             documents = self._db.list_documents(
                 limit=limit, show_content=show_content, max_content_length=max_content_length
             )
-            
+
             # Format output based on requested format
             if output_format == "dict":
                 return documents
@@ -529,18 +529,18 @@ class SEMSimple:
         """Format documents for CLI output."""
         if not documents:
             return ""
-        
+
         formatted_parts = []
         for doc in documents:
             doc_id = doc.get("id", doc.get("document_id", "unknown"))
             formatted_parts.append(doc_id)
-            
+
             if show_content:
                 text = doc.get("text", doc.get("content", ""))
                 # Clean delimiter from text
                 text = text.replace(delimiter, " ")
                 formatted_parts.append(text)
-        
+
         return delimiter.join(formatted_parts)
 
     def _format_documents_csv(self, documents: List[dict], delimiter: str, show_content: bool) -> str:
@@ -548,7 +548,7 @@ class SEMSimple:
         if not documents:
             header = "id,text" if show_content else "id"
             return header + "\n"
-        
+
         lines = []
         if show_content:
             lines.append("id,text")
@@ -561,7 +561,7 @@ class SEMSimple:
             for doc in documents:
                 doc_id = doc.get("id", doc.get("document_id", "unknown"))
                 lines.append(f'"{doc_id}"')
-        
+
         return "\n".join(lines)
 
     def remove_document(self, doc_id: str) -> bool:
@@ -683,18 +683,18 @@ class SEMSimple:
     def generate_config_template(self, output_path: Optional[str] = None) -> Union[Dict[str, Any], bool]:
         """
         Generate a configuration template with current settings.
-        
+
         Args:
             output_path: Optional path to save config file
-            
+
         Returns:
             Configuration dictionary if no output_path, True if file saved successfully
-            
+
         Example:
             >>> config = sem.generate_config_template()
             >>> print(config['embedding']['model'])
             'all-MiniLM-L6-v2'
-            
+
             >>> sem.generate_config_template("my_config.json")
             True
         """
@@ -705,7 +705,7 @@ class SEMSimple:
                 "storage.path": str(self.storage_path),
                 "index.name": self.index_name,
             }
-            
+
             if output_path:
                 # Save to file and return success status
                 success = generate_config_template(output_path, **config_kwargs)
@@ -726,13 +726,13 @@ class SEMSimple:
     def save_config(self, config_path: str) -> bool:
         """
         Save current configuration to file.
-        
+
         Args:
             config_path: Path to save configuration
-            
+
         Returns:
             True if successful
-            
+
         Example:
             >>> sem.save_config("current_config.json")
             True
@@ -745,7 +745,7 @@ class SEMSimple:
             else:
                 # Generate template with current settings
                 self.generate_config_template(config_path)
-            
+
             logger.info("Saved configuration to: %s", config_path)
             return True
         except Exception as e:
@@ -755,13 +755,13 @@ class SEMSimple:
     def load_config_from_file(self, config_path: str) -> bool:
         """
         Load configuration from file and reinitialize.
-        
+
         Args:
             config_path: Path to configuration file
-            
+
         Returns:
             True if successful
-            
+
         Example:
             >>> sem.load_config_from_file("production_config.json")
             True
@@ -769,7 +769,7 @@ class SEMSimple:
         try:
             # Load configuration
             config = load_config(config_path)
-            
+
             # Extract key settings
             if hasattr(config, 'embedding') and hasattr(config.embedding, 'model'):
                 self.embedding_model = config.embedding.model
@@ -777,11 +777,11 @@ class SEMSimple:
                 self.storage_path = Path(config.storage.path)
             if hasattr(config, 'index') and hasattr(config.index, 'name'):
                 self.index_name = config.index.name
-            
+
             # Force reinitialization with new config
             self._initialized = False
             self._db = None
-            
+
             logger.info("Loaded configuration from: %s", config_path)
             return True
         except Exception as e:
@@ -792,13 +792,13 @@ class SEMSimple:
     def discover_databases(search_paths: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Discover available databases in search paths.
-        
+
         Args:
             search_paths: Optional list of paths to search (uses defaults if None)
-            
+
         Returns:
             List of database info dictionaries
-            
+
         Example:
             >>> databases = SEMSimple.discover_databases()
             >>> for db in databases:
@@ -807,7 +807,7 @@ class SEMSimple:
         try:
             # Use the existing auto-resolve functionality
             all_databases = list_available_databases()
-            
+
             # Flatten the structure for easier consumption
             discovered = []
             for db_name, locations in all_databases.items():
@@ -819,7 +819,7 @@ class SEMSimple:
                         "document_count": location.get("document_count", 0),
                         "last_modified": location.get("last_modified", ""),
                     })
-            
+
             logger.info("Discovered %s databases", len(discovered))
             return discovered
         except Exception as e:
@@ -830,10 +830,10 @@ class SEMSimple:
     def list_available_databases() -> List[str]:
         """
         Get list of discoverable database names.
-        
+
         Returns:
             List of database names
-            
+
         Example:
             >>> names = SEMSimple.list_available_databases()
             >>> print(names)
@@ -851,13 +851,13 @@ class SEMSimple:
     def auto_resolve_database(self, db_name: str) -> bool:
         """
         Auto-resolve and switch to a discovered database.
-        
+
         Args:
             db_name: Name of database to resolve and switch to
-            
+
         Returns:
             True if successful
-            
+
         Example:
             >>> sem.auto_resolve_database("my_project")
             True
@@ -865,26 +865,26 @@ class SEMSimple:
         try:
             # Discover databases
             databases = self.discover_databases()
-            
+
             # Find matching database
             matching_db = None
             for db in databases:
                 if db["name"] == db_name:
                     matching_db = db
                     break
-            
+
             if not matching_db:
                 logger.error("Database not found: %s", db_name)
                 return False
-            
+
             # Update settings to point to discovered database
             self.index_name = matching_db["name"]
             self.storage_path = Path(matching_db["path"]).parent
-            
+
             # Force reinitialization
             self._initialized = False
             self._db = None
-            
+
             logger.info("Auto-resolved to database: %s at %s", db_name, self.storage_path)
             return True
         except Exception as e:

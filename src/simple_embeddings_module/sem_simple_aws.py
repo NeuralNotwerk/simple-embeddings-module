@@ -473,7 +473,7 @@ class SEMSimpleAWS:
             document_ids = [f"doc_{base_count + i + 1}" for i in range(len(texts))]
         if len(document_ids) != len(texts):
             raise ValueError("Number of document_ids must match number of texts")
-        documents = dict(zip(document_ids, texts))
+        # documents = dict(zip(document_ids, texts))  # Appears unused, commenting out for scream test
         self.db.add_documents(texts, document_ids=document_ids)
         return document_ids
 

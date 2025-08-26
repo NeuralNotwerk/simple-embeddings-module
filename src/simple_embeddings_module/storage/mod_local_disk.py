@@ -57,6 +57,7 @@ class LocalDiskStorage(StorageBackendBase):
         "compression_supported": True,
         "encryption_supported": False,
     }
+
     def __init__(self, **config):
         """Initialize local disk storage backend"""
         super().__init__(**config)
@@ -69,6 +70,7 @@ class LocalDiskStorage(StorageBackendBase):
         # Initialize serializer
         self._init_serializer()
         logger.info("LocalDiskStorage initialized: %s", self.base_path)
+
     def _init_serializer(self):
         """Initialize the orjson serializer"""
         try:
@@ -76,6 +78,7 @@ class LocalDiskStorage(StorageBackendBase):
             self._orjson = orjson
         except ImportError:
             raise StorageBackendError("orjson library not installed. Install with: pip install orjson")
+
     def save_index(self, vectors: torch.Tensor, metadata: Dict[str, Any], index_name: str) -> bool:
         """Save vector index and metadata to local disk"""
         self.validate_index_name(index_name)
@@ -120,6 +123,7 @@ class LocalDiskStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to save index '%s': %s", index_name, e)
             raise StorageBackendError("Failed to save index: %s" % e)
+
     def load_index(self, index_name: str, device: Optional[torch.device] = None) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """Load vector index and metadata from local disk"""
         self.validate_index_name(index_name)
@@ -161,6 +165,7 @@ class LocalDiskStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to load index '%s': %s", index_name, e)
             raise StorageBackendError("Failed to load index: %s" % e)
+
     def list_indexes(self) -> List[str]:
         """List all available indexes"""
         try:
@@ -174,6 +179,7 @@ class LocalDiskStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to list indexes: %s", e)
             return []
+
     def delete_index(self, index_name: str) -> bool:
         """Delete an index"""
         self.validate_index_name(index_name)
@@ -188,6 +194,7 @@ class LocalDiskStorage(StorageBackendBase):
         except Exception as e:
             logger.error("Failed to delete index '%s': %s", index_name, e)
             raise StorageBackendError("Failed to delete index: %s" % e)
+
     def index_exists(self, index_name: str) -> bool:
         """Check if an index exists"""
         try:
@@ -197,6 +204,7 @@ class LocalDiskStorage(StorageBackendBase):
             )
         except Exception:
             return False
+
     def _get_index_size(self, index_name: str) -> Optional[int]:
         """Get the size of an index in bytes"""
         try:
@@ -208,14 +216,17 @@ class LocalDiskStorage(StorageBackendBase):
             return total_size
         except Exception:
             return None
+
     def _compress_data(self, data: bytes) -> bytes:
         """Compress data using gzip"""
         import gzip
         return gzip.compress(data)
+
     def _decompress_data(self, data: bytes) -> bytes:
         """Decompress gzip data"""
         import gzip
         return gzip.decompress(data)
+
     def _atomic_write(self, file_path: Path, data: bytes) -> None:
         """Write file atomically using temporary file"""
         temp_file = None
@@ -233,13 +244,14 @@ class LocalDiskStorage(StorageBackendBase):
             if temp_file and temp_file.exists():
                 temp_file.unlink()
             raise e
+
     def _create_backup(self, file_path: Path) -> None:
         """Create backup copies of the index file"""
         try:
             # Rotate existing backups
             for i in range(self.backup_count - 1, 0, -1):
                 old_backup = file_path.with_suffix(f"{file_path.suffix}.bak{i}")
-                new_backup = file_path.with_suffix(f"{file_path.suffix}.bak{i+1}")
+                new_backup = file_path.with_suffix(f"{file_path.suffix}.bak{i + 1}")
                 if old_backup.exists():
                     if new_backup.exists():
                         new_backup.unlink()
@@ -252,6 +264,7 @@ class LocalDiskStorage(StorageBackendBase):
                 shutil.copy2(file_path, backup_path)
         except Exception as e:
             logger.warning("Failed to create backup: %s", e)
+
     def _write_metadata_summary(self, index_dir: Path, metadata: Dict[str, Any]) -> None:
         """Write metadata summary for quick access"""
         try:
@@ -274,6 +287,7 @@ class LocalDiskStorage(StorageBackendBase):
                 f.write(self._orjson.dumps(summary, option=self._orjson.OPT_INDENT_2))
         except Exception as e:
             logger.warning("Failed to write metadata summary: %s", e)
+
     def get_index_info(self, index_name: str) -> Optional[Dict[str, Any]]:
         """Get information about an index"""
         if not self.index_exists(index_name):
@@ -293,6 +307,7 @@ class LocalDiskStorage(StorageBackendBase):
         except Exception as e:
             logger.warning("Failed to get index info for '%s': %s", index_name, e)
             return None
+
     def __repr__(self) -> str:
         return (
             f"LocalDiskStorage("
